@@ -6,6 +6,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\Subject;
+use App\Models\Student;
+use App\Models\ClassSession;
 
 class User extends Authenticatable
 {
@@ -18,9 +21,12 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'login_id',
         'name',
         'email',
         'password',
+        'role',
+        'status',
     ];
 
     /**
@@ -44,5 +50,20 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function subjects()
+    {
+        return $this->belongsToMany(Subject::class, 'instructor_subject')->withTimestamps();
+    }
+
+    public function students()
+    {
+        return $this->hasMany(Student::class, 'instructor_id');
+    }
+
+    public function classSessions()
+    {
+        return $this->hasMany(ClassSession::class, 'instructor_id');
     }
 }

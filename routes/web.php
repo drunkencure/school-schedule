@@ -1,7 +1,40 @@
 <?php
 
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\StudentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
+});
+
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register'])->name('register.submit');
+});
+
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::post('/subjects', [AdminController::class, 'storeSubject'])->name('admin.subjects.store');
+    Route::post('/instructors/{user}/approve', [AdminController::class, 'approve'])->name('admin.instructors.approve');
+    Route::post('/instructors/{user}/reject', [AdminController::class, 'reject'])->name('admin.instructors.reject');
+    Route::post('/instructors/{user}/deactivate', [AdminController::class, 'deactivate'])->name('admin.instructors.deactivate');
+});
+
+Route::middleware(['auth', 'role:instructor'])->group(function () {
+    Route::get('/dashboard', [ScheduleController::class, 'dashboard'])->name('instructor.dashboard');
+
+    Route::resource('students', StudentController::class)->except(['show']);
+
+    Route::get('/schedule', [ScheduleController::class, 'index'])->name('schedule.index');
+    Route::post('/schedule/sessions', [ScheduleController::class, 'store'])->name('schedule.store');
+    Route::post('/schedule/sessions/move', [ScheduleController::class, 'moveByForm'])->name('schedule.move.form');
+    Route::put('/schedule/sessions/{classSession}', [ScheduleController::class, 'move'])->name('schedule.move');
+    Route::delete('/schedule/sessions/{classSession}', [ScheduleController::class, 'destroy'])->name('schedule.destroy');
 });
