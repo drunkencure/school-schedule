@@ -81,6 +81,7 @@
                 <th>아이디</th>
                 <th>이름</th>
                 <th>이메일</th>
+                <th>과목</th>
                 <th>처리</th>
             </tr>
             </thead>
@@ -88,8 +89,15 @@
             @forelse ($approvedInstructors as $instructor)
                 <tr>
                     <td>{{ $instructor->login_id }}</td>
-                    <td>{{ $instructor->name }}</td>
+                    <td>
+                        <a href="{{ route('admin.instructors.show', $instructor) }}" style="text-decoration: underline;">
+                            {{ $instructor->name }}
+                        </a>
+                    </td>
                     <td>{{ $instructor->email }}</td>
+                    <td>
+                        {{ $instructor->subjects->pluck('name')->join(', ') ?: '과목 미지정' }}
+                    </td>
                     <td>
                         <form method="POST" action="{{ route('admin.instructors.deactivate', $instructor) }}">
                             @csrf
@@ -99,7 +107,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4">활성 강사가 없습니다.</td>
+                    <td colspan="5">활성 강사가 없습니다.</td>
                 </tr>
             @endforelse
             </tbody>

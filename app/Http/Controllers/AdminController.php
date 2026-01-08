@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Subject;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class AdminController extends Controller
@@ -17,6 +18,7 @@ class AdminController extends Controller
 
         $approvedInstructors = User::where('role', 'instructor')
             ->where('status', 'approved')
+            ->with('subjects')
             ->orderBy('name')
             ->get();
 
@@ -79,10 +81,65 @@ class AdminController extends Controller
         return back()->with('status', '과목을 등록했습니다.');
     }
 
+    public function showInstructor(User $user)
+    {
+        $this->ensureInstructor($user);
+
+        $user->load([
+            'subjects',
+            'students' => function ($query) {
+                $query->orderBy('name');
+            },
+            'students.classSessions.subject',
+            'classSessions.students',
+            'classSessions.subject',
+        ]);
+
+        $gridData = $this->buildGrid($user);
+
+        return view('admin.instructors.show', [
+            'instructor' => $user,
+            ...$gridData,
+        ]);
+    }
+
     private function ensureInstructor(User $user): void
     {
         if ($user->role !== 'instructor') {
             abort(404);
         }
+    }
+
+    private function buildGrid(User $instructor): array
+    {
+        $days = config('schedule.days');
+        $timeSlots = $this->timeSlots();
+        $sessions = $instructor->classSessions;
+        $grid = [];
+
+        foreach ($sessions as $session) {
+            $timeKey = Carbon::createFromFormat('H:i:s', $session->start_time)->format('H:i');
+            $grid[$session->weekday][$timeKey] = $session;
+        }
+
+        return [
+            'days' => $days,
+            'timeSlots' => $timeSlots,
+            'grid' => $grid,
+            'sessions' => $sessions,
+        ];
+    }
+
+    private function timeSlots(): array
+    {
+        $start = (int) config('schedule.start_hour');
+        $end = (int) config('schedule.end_hour');
+        $slots = [];
+
+        for ($hour = $start; $hour < $end; $hour++) {
+            $slots[] = Carbon::createFromTime($hour)->format('H:i');
+        }
+
+        return $slots;
     }
 }
