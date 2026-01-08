@@ -13,20 +13,43 @@
                 <th>수업 날짜</th>
                 <th>회차</th>
                 <th>요청 일시</th>
+                <th>처리 상태</th>
+                <th>처리</th>
             </tr>
             </thead>
             <tbody>
             @forelse ($tuitionRequests as $request)
-                <tr>
+                @php
+                    $isPending = $request->status === 'pending';
+                @endphp
+                <tr class="{{ $isPending ? 'tuition-request-pending' : '' }}">
                     <td>{{ $request->instructor->name ?? '' }}</td>
                     <td>{{ $request->student->name ?? '' }}</td>
                     <td>{{ implode(', ', $request->lesson_dates ?? []) }}</td>
                     <td>{{ $request->lesson_count }}회</td>
                     <td>{{ $request->requested_at->format('Y-m-d H:i') }}</td>
+                    <td>
+                        <span class="status-badge {{ $isPending ? 'status-pending' : 'status-completed' }}">
+                            {{ $isPending ? '요청 대기' : '입금 처리 완료' }}
+                        </span>
+                        @if (! $isPending && $request->processed_at)
+                            <div class="text-muted">처리: {{ $request->processed_at->format('Y-m-d H:i') }}</div>
+                        @endif
+                    </td>
+                    <td>
+                        @if ($isPending)
+                            <form method="POST" action="{{ route('admin.tuition-requests.complete', $request) }}">
+                                @csrf
+                                <button type="submit" class="btn btn-secondary btn-mini">입금 처리 완료</button>
+                            </form>
+                        @else
+                            <span class="text-muted">처리 완료</span>
+                        @endif
+                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5">수업료 입금 요청이 없습니다.</td>
+                    <td colspan="7">수업료 입금 요청이 없습니다.</td>
                 </tr>
             @endforelse
             </tbody>

@@ -27,6 +27,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('/instructors/{user}/approve', [AdminController::class, 'approve'])->name('admin.instructors.approve');
     Route::post('/instructors/{user}/reject', [AdminController::class, 'reject'])->name('admin.instructors.reject');
     Route::post('/instructors/{user}/deactivate', [AdminController::class, 'deactivate'])->name('admin.instructors.deactivate');
+    Route::post('/tuition-requests/{tuitionRequest}/complete', [AdminController::class, 'completeTuitionRequest'])
+        ->name('admin.tuition-requests.complete');
 });
 
 Route::middleware(['auth', 'role:instructor'])->group(function () {

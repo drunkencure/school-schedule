@@ -12,6 +12,45 @@
         </div>
     </div>
 
+    <div class="card notice-card">
+        <div class="notice-header">
+            <h3>수업료 입금 알림</h3>
+            <span class="notice-subtitle">요청 및 처리 현황을 빠르게 확인하세요.</span>
+        </div>
+        <div class="notice-grid">
+            <div class="notice-panel notice-pending">
+                <div class="notice-title">입금 요청 대기</div>
+                <div class="notice-count">{{ $pendingTuitionRequests->count() }}건</div>
+                <ul class="notice-list">
+                    @forelse ($pendingTuitionRequests as $request)
+                        <li>
+                            <strong>{{ $request->student->name ?? '' }}</strong>
+                            <span class="text-muted">{{ $request->requested_at->format('m/d') }} 요청</span>
+                        </li>
+                    @empty
+                        <li class="text-muted">대기 중인 요청이 없습니다.</li>
+                    @endforelse
+                </ul>
+            </div>
+            <div class="notice-panel notice-completed">
+                <div class="notice-title">입금 처리 완료</div>
+                <div class="notice-count">{{ $recentCompletedTuitionRequests->count() }}건</div>
+                <ul class="notice-list">
+                    @forelse ($recentCompletedTuitionRequests as $request)
+                        <li>
+                            <strong>{{ $request->student->name ?? '' }}</strong>
+                            <span class="text-muted">
+                                {{ optional($request->processed_at)->format('m/d') }} 처리
+                            </span>
+                        </li>
+                    @empty
+                        <li class="text-muted">최근 처리 완료 내역이 없습니다.</li>
+                    @endforelse
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <div class="card calendar-grid">
         <table class="calendar-table">
             <thead>
@@ -30,13 +69,34 @@
                         @endphp
                         <td class="{{ $day['isCurrentMonth'] ? '' : 'calendar-muted' }}">
                             <div class="calendar-date">{{ $day['date']->format('j') }}</div>
-                            @forelse ($day['sessions'] as $session)
+                            @php
+                                $hasSession = false;
+                            @endphp
+                            @foreach ($day['sessions'] as $session)
+                                @php
+                                    $sessionStartDate = $session->start_date ?? null;
+                                @endphp
+                                @if ($sessionStartDate && $day['date']->lt($sessionStartDate))
+                                    @continue
+                                @endif
+                                @php
+                                    $eligibleStudents = $session->students->filter(function ($student) use ($day) {
+                                        $startDate = $student->pivot->start_date ?? null;
+                                        return ! $startDate || $day['date']->gte($startDate);
+                                    });
+                                @endphp
+                                @if ($eligibleStudents->isEmpty())
+                                    @continue
+                                @endif
+                                @php
+                                    $hasSession = true;
+                                @endphp
                                 <div class="calendar-session">
                                     <div class="calendar-session-title">
                                         {{ \Carbon\Carbon::createFromFormat('H:i:s', $session->start_time)->format('H:i') }}
                                         {{ $session->subject->name }}
                                     </div>
-                                    @foreach ($session->students as $student)
+                                    @foreach ($eligibleStudents as $student)
                                         @php
                                             $hasAttendance = isset($attendanceMap[$student->id][$session->id][$dateKey]);
                                         @endphp
@@ -54,11 +114,10 @@
                                         </div>
                                     @endforeach
                                 </div>
-                            @empty
-                                @if ($day['isCurrentMonth'])
-                                    <div class="calendar-empty">수업 없음</div>
-                                @endif
-                            @endforelse
+                            @endforeach
+                            @if (! $hasSession && $day['isCurrentMonth'])
+                                <div class="calendar-empty">수업 없음</div>
+                            @endif
                         </td>
                     @endforeach
                 </tr>
@@ -75,6 +134,7 @@
                 <th>수강생</th>
                 <th>진행 회차</th>
                 <th>요청 조건</th>
+                <th>처리 상태</th>
                 <th>요청</th>
             </tr>
             </thead>
@@ -82,11 +142,27 @@
             @forelse ($billingStats as $studentId => $stat)
                 @php
                     $student = $stat['student'];
+                    $latestRequest = $stat['latestRequest'];
                 @endphp
                 <tr>
                     <td>{{ $student->name }}</td>
                     <td>{{ $stat['count'] }}회</td>
                     <td>{{ $stat['cycle'] }}회마다 요청</td>
+                    <td>
+                        @if ($latestRequest)
+                            @if ($latestRequest->status === 'pending')
+                                <span class="status-badge status-pending">요청 대기 중</span>
+                                <div class="text-muted">요청: {{ $latestRequest->requested_at->format('Y-m-d') }}</div>
+                            @else
+                                <span class="status-badge status-completed">입금 처리 완료</span>
+                                @if ($latestRequest->processed_at)
+                                    <div class="text-muted">처리: {{ $latestRequest->processed_at->format('Y-m-d') }}</div>
+                                @endif
+                            @endif
+                        @else
+                            <span class="text-muted">요청 없음</span>
+                        @endif
+                    </td>
                     <td>
                         @if ($stat['eligible'])
                             <form method="POST" action="{{ route('calendar.tuition.request') }}">
@@ -103,7 +179,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4">등록된 수강생이 없습니다.</td>
+                    <td colspan="5">등록된 수강생이 없습니다.</td>
                 </tr>
             @endforelse
             </tbody>

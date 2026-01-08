@@ -16,11 +16,13 @@ class TuitionRequest extends Model
         'lesson_dates',
         'status',
         'requested_at',
+        'processed_at',
     ];
 
     protected $casts = [
         'lesson_dates' => 'array',
         'requested_at' => 'datetime',
+        'processed_at' => 'datetime',
     ];
 
     public function instructor()

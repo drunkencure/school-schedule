@@ -86,6 +86,19 @@ class AdminController extends Controller
         return back()->with('status', '과목을 등록했습니다.');
     }
 
+    public function completeTuitionRequest(TuitionRequest $tuitionRequest)
+    {
+        if ($tuitionRequest->status !== 'pending') {
+            return back()->with('status', '이미 처리된 요청입니다.');
+        }
+
+        $tuitionRequest->status = 'completed';
+        $tuitionRequest->processed_at = now();
+        $tuitionRequest->save();
+
+        return back()->with('status', '수업료 입금 처리를 완료했습니다.');
+    }
+
     public function showInstructor(User $user)
     {
         $this->ensureInstructor($user);

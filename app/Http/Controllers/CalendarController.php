@@ -23,8 +23,18 @@ class CalendarController extends Controller
 
         $sessions = ClassSession::with(['students', 'subject'])
             ->where('instructor_id', $instructor->id)
-            ->get()
-            ->groupBy('weekday');
+            ->get();
+
+        foreach ($sessions as $session) {
+            $session->start_date = $this->nextSessionStartDate($session->created_at, (int) $session->weekday);
+            foreach ($session->students as $student) {
+                if ($student->pivot && $student->pivot->created_at) {
+                    $student->pivot->start_date = $this->nextSessionStartDate($student->pivot->created_at, (int) $session->weekday);
+                }
+            }
+        }
+
+        $sessions = $sessions->groupBy('weekday');
 
         $studentIds = $instructor->students()->pluck('id');
         $attendances = LessonAttendance::whereIn('student_id', $studentIds)
@@ -57,6 +67,17 @@ class CalendarController extends Controller
         }
 
         $billingStats = $this->buildBillingStats($instructor);
+        $pendingTuitionRequests = TuitionRequest::with('student')
+            ->where('instructor_id', $instructor->id)
+            ->where('status', 'pending')
+            ->orderByDesc('requested_at')
+            ->get();
+        $recentCompletedTuitionRequests = TuitionRequest::with('student')
+            ->where('instructor_id', $instructor->id)
+            ->where('status', 'completed')
+            ->orderByDesc('processed_at')
+            ->limit(5)
+            ->get();
 
         return view('instructor.calendar.index', [
             'weeks' => $weeks,
@@ -64,6 +85,8 @@ class CalendarController extends Controller
             'days' => config('schedule.days'),
             'attendanceMap' => $attendanceMap,
             'billingStats' => $billingStats,
+            'pendingTuitionRequests' => $pendingTuitionRequests,
+            'recentCompletedTuitionRequests' => $recentCompletedTuitionRequests,
         ]);
     }
 
@@ -171,20 +194,32 @@ class CalendarController extends Controller
             }
             $count = $query->count();
 
-            $pendingRequest = TuitionRequest::where('student_id', $student->id)
-                ->where('status', 'pending')
+            $latestRequest = TuitionRequest::where('student_id', $student->id)
                 ->latest('requested_at')
                 ->first();
+            $hasPendingRequest = TuitionRequest::where('student_id', $student->id)
+                ->where('status', 'pending')
+                ->exists();
 
             $stats[$student->id] = [
                 'student' => $student,
                 'count' => $count,
                 'cycle' => $student->billing_cycle_count,
                 'eligible' => $count >= $student->billing_cycle_count,
-                'pending' => (bool) $pendingRequest,
+                'pending' => $hasPendingRequest,
+                'latestRequest' => $latestRequest,
             ];
         }
 
         return $stats;
+    }
+
+    private function nextSessionStartDate(Carbon $baseDate, int $weekday): Carbon
+    {
+        $base = $baseDate->copy()->startOfDay();
+        $currentWeekday = (int) $base->dayOfWeekIso;
+        $offset = ($weekday - $currentWeekday + 7) % 7;
+
+        return $base->copy()->addDays($offset);
     }
 }
