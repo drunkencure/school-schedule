@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\StudentController;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,10 @@ Route::middleware(['auth', 'role:instructor'])->group(function () {
     Route::get('/dashboard', [ScheduleController::class, 'dashboard'])->name('instructor.dashboard');
 
     Route::resource('students', StudentController::class)->except(['show']);
+
+    Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+    Route::post('/calendar/attendance', [CalendarController::class, 'toggleAttendance'])->name('calendar.attendance.toggle');
+    Route::post('/calendar/tuition-requests', [CalendarController::class, 'requestTuition'])->name('calendar.tuition.request');
 
     Route::get('/schedule', [ScheduleController::class, 'index'])->name('schedule.index');
     Route::post('/schedule/sessions', [ScheduleController::class, 'store'])->name('schedule.store');

@@ -24,6 +24,7 @@
                 @else
                     <a href="{{ route('students.index') }}">수강생 등록/삭제</a>
                     <a href="{{ route('schedule.index') }}">시간표 수정</a>
+                    <a href="{{ route('calendar.index') }}">수업료 요청</a>
                 @endif
             </nav>
             <div class="nav-actions">

@@ -10,6 +10,11 @@
                 <input type="text" id="name" name="name" value="{{ old('name') }}" required>
             </div>
             <div class="form-group">
+                <label for="billing_cycle_count">수업료 요청 회차</label>
+                <input type="number" id="billing_cycle_count" name="billing_cycle_count" min="1" max="50"
+                       value="{{ old('billing_cycle_count', 4) }}" required>
+            </div>
+            <div class="form-group">
                 <label for="subject_id">과목</label>
                 <select id="subject_id" name="subject_id" required {{ $subjects->isEmpty() ? 'disabled' : '' }}>
                     <option value="">선택</option>

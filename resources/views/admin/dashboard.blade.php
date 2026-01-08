@@ -3,6 +3,36 @@
 @section('content')
     <h2>전체 관리자</h2>
 
+    <div class="card">
+        <h3>수업료 입금 요청</h3>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>강사</th>
+                <th>수강생</th>
+                <th>수업 날짜</th>
+                <th>회차</th>
+                <th>요청 일시</th>
+            </tr>
+            </thead>
+            <tbody>
+            @forelse ($tuitionRequests as $request)
+                <tr>
+                    <td>{{ $request->instructor->name ?? '' }}</td>
+                    <td>{{ $request->student->name ?? '' }}</td>
+                    <td>{{ implode(', ', $request->lesson_dates ?? []) }}</td>
+                    <td>{{ $request->lesson_count }}회</td>
+                    <td>{{ $request->requested_at->format('Y-m-d H:i') }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="5">수업료 입금 요청이 없습니다.</td>
+                </tr>
+            @endforelse
+            </tbody>
+        </table>
+    </div>
+
     <div class="grid two">
         <div class="card">
             <h3>과목 관리</h3>
@@ -123,6 +153,7 @@
                     <th>아이디</th>
                     <th>이름</th>
                     <th>이메일</th>
+                    <th>처리</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -131,10 +162,16 @@
                         <td>{{ $instructor->login_id }}</td>
                         <td>{{ $instructor->name }}</td>
                         <td>{{ $instructor->email }}</td>
+                        <td>
+                            <form method="POST" action="{{ route('admin.instructors.approve', $instructor) }}">
+                                @csrf
+                                <button type="submit" class="btn">활성화</button>
+                            </form>
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="3">비활성 강사가 없습니다.</td>
+                        <td colspan="4">비활성 강사가 없습니다.</td>
                     </tr>
                 @endforelse
                 </tbody>

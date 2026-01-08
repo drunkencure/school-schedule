@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\LessonAttendance;
+use App\Models\TuitionRequest;
 
 class Student extends Model
 {
@@ -12,6 +14,13 @@ class Student extends Model
     protected $fillable = [
         'instructor_id',
         'name',
+        'billing_cycle_count',
+        'last_billed_lesson_date',
+    ];
+
+    protected $casts = [
+        'last_billed_lesson_date' => 'date',
+        'billing_cycle_count' => 'integer',
     ];
 
     public function instructor()
@@ -22,5 +31,15 @@ class Student extends Model
     public function classSessions()
     {
         return $this->belongsToMany(ClassSession::class, 'class_session_student')->withTimestamps();
+    }
+
+    public function lessonAttendances()
+    {
+        return $this->hasMany(LessonAttendance::class);
+    }
+
+    public function tuitionRequests()
+    {
+        return $this->hasMany(TuitionRequest::class);
     }
 }

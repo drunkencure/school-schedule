@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use App\Models\Subject;
 use App\Models\Student;
 use App\Models\ClassSession;
+use App\Models\TuitionRequest;
 
 class User extends Authenticatable
 {
@@ -65,5 +66,10 @@ class User extends Authenticatable
     public function classSessions()
     {
         return $this->hasMany(ClassSession::class, 'instructor_id');
+    }
+
+    public function tuitionRequests()
+    {
+        return $this->hasMany(TuitionRequest::class, 'instructor_id');
     }
 }

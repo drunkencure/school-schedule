@@ -44,6 +44,7 @@ class StudentController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
+            'billing_cycle_count' => ['required', 'integer', 'min:1', 'max:50'],
             'subject_id' => [
                 'required',
                 Rule::exists('instructor_subject', 'subject_id')->where('user_id', $instructor->id),
@@ -57,6 +58,7 @@ class StudentController extends Controller
             $student = Student::create([
                 'instructor_id' => $instructor->id,
                 'name' => $validated['name'],
+                'billing_cycle_count' => $validated['billing_cycle_count'],
             ]);
 
             $scheduleService->assignStudentToSession(
@@ -87,6 +89,7 @@ class StudentController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
+            'billing_cycle_count' => ['required', 'integer', 'min:1', 'max:50'],
         ]);
 
         $student->update($validated);

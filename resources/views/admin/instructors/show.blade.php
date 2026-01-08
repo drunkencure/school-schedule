@@ -2,14 +2,47 @@
 
 @section('content')
     <div class="card">
-        <div style="display:flex; justify-content: space-between; align-items: center;">
+        <div style="display:flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
             <div>
                 <h2>{{ $instructor->name }} 강사</h2>
                 <div>아이디: {{ $instructor->login_id }}</div>
                 <div>이메일: {{ $instructor->email }}</div>
+                <div>상태: {{ $instructor->status }}</div>
                 <div>과목: {{ $instructor->subjects->pluck('name')->join(', ') ?: '과목 미지정' }}</div>
             </div>
-            <a class="btn btn-secondary" href="{{ route('admin.dashboard') }}">관리자 대시보드</a>
+            <div style="display:flex; gap: 10px;">
+                @if ($instructor->status === 'approved')
+                    <form method="POST" action="{{ route('admin.instructors.deactivate', $instructor) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('강사를 비활성화할까요?')">비활성화</button>
+                    </form>
+                @endif
+                @if ($instructor->status !== 'rejected')
+                    <form method="POST" action="{{ route('admin.instructors.reject', $instructor) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('강사 등록을 거절할까요?')">거절</button>
+                    </form>
+                @endif
+                @if ($instructor->status === 'pending')
+                    <form method="POST" action="{{ route('admin.instructors.approve', $instructor) }}">
+                        @csrf
+                        <button type="submit" class="btn">승인</button>
+                    </form>
+                @endif
+                @if ($instructor->status === 'inactive')
+                    <form method="POST" action="{{ route('admin.instructors.approve', $instructor) }}">
+                        @csrf
+                        <button type="submit" class="btn">활성화</button>
+                    </form>
+                @endif
+                @if ($instructor->status === 'rejected')
+                    <form method="POST" action="{{ route('admin.instructors.approve', $instructor) }}">
+                        @csrf
+                        <button type="submit" class="btn">재승인</button>
+                    </form>
+                @endif
+                <a class="btn btn-secondary" href="{{ route('admin.dashboard') }}">관리자 대시보드</a>
+            </div>
         </div>
     </div>
 

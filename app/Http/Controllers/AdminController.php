@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Subject;
+use App\Models\TuitionRequest;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -33,6 +34,9 @@ class AdminController extends Controller
             ->get();
 
         $subjects = Subject::orderBy('name')->get();
+        $tuitionRequests = TuitionRequest::with(['instructor', 'student'])
+            ->orderByDesc('requested_at')
+            ->get();
 
         return view('admin.dashboard', [
             'pendingInstructors' => $pendingInstructors,
@@ -40,6 +44,7 @@ class AdminController extends Controller
             'inactiveInstructors' => $inactiveInstructors,
             'rejectedInstructors' => $rejectedInstructors,
             'subjects' => $subjects,
+            'tuitionRequests' => $tuitionRequests,
         ]);
     }
 
