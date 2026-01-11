@@ -14,11 +14,13 @@ class Student extends Model
     protected $fillable = [
         'instructor_id',
         'name',
+        'registered_at',
         'billing_cycle_count',
         'last_billed_lesson_date',
     ];
 
     protected $casts = [
+        'registered_at' => 'date',
         'last_billed_lesson_date' => 'date',
         'billing_cycle_count' => 'integer',
     ];

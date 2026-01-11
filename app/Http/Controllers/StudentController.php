@@ -44,6 +44,7 @@ class StudentController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
+            'registered_at' => ['required', 'date'],
             'billing_cycle_count' => ['required', 'integer', 'min:1', 'max:50'],
             'subject_id' => [
                 'required',
@@ -58,6 +59,7 @@ class StudentController extends Controller
             $student = Student::create([
                 'instructor_id' => $instructor->id,
                 'name' => $validated['name'],
+                'registered_at' => $validated['registered_at'],
                 'billing_cycle_count' => $validated['billing_cycle_count'],
             ]);
 

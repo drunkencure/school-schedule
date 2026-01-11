@@ -28,8 +28,15 @@ class CalendarController extends Controller
         foreach ($sessions as $session) {
             $session->start_date = $this->nextSessionStartDate($session->created_at, (int) $session->weekday);
             foreach ($session->students as $student) {
-                if ($student->pivot && $student->pivot->created_at) {
-                    $student->pivot->start_date = $this->nextSessionStartDate($student->pivot->created_at, (int) $session->weekday);
+                if (! $student->pivot) {
+                    continue;
+                }
+
+                $baseDate = $student->registered_at ?? $student->pivot->created_at ?? $student->created_at;
+
+                if ($baseDate) {
+                    $startBase = $baseDate instanceof Carbon ? $baseDate : Carbon::parse($baseDate);
+                    $student->pivot->start_date = $this->nextSessionStartDate($startBase, (int) $session->weekday);
                 }
             }
         }
@@ -107,19 +114,31 @@ class CalendarController extends Controller
 
         $student = Student::findOrFail($validated['student_id']);
         $classSession = ClassSession::with('students')->findOrFail($validated['class_session_id']);
-        $lessonDate = Carbon::parse($validated['lesson_date'])->toDateString();
+        $lessonDate = Carbon::parse($validated['lesson_date'])->startOfDay();
+        $lessonDateString = $lessonDate->toDateString();
 
         if (! $classSession->students->contains($student->id)) {
             return back()->withErrors(['lesson_date' => '해당 수업에 등록된 학생이 아닙니다.']);
         }
 
-        if (Carbon::parse($lessonDate)->dayOfWeekIso !== (int) $classSession->weekday) {
+        if ($lessonDate->dayOfWeekIso !== (int) $classSession->weekday) {
             return back()->withErrors(['lesson_date' => '수업 요일과 맞지 않는 날짜입니다.']);
+        }
+
+        $today = now()->startOfDay();
+        $registeredAt = ($student->registered_at ?? $student->created_at)->copy()->startOfDay();
+
+        if ($lessonDate->gt($today)) {
+            return back()->withErrors(['lesson_date' => '오늘 이후의 수업은 완료 처리할 수 없습니다.']);
+        }
+
+        if ($lessonDate->lt($registeredAt)) {
+            return back()->withErrors(['lesson_date' => '등록일 이전 수업은 완료 처리할 수 없습니다.']);
         }
 
         $attendance = LessonAttendance::where('student_id', $student->id)
             ->where('class_session_id', $classSession->id)
-            ->where('lesson_date', $lessonDate)
+            ->where('lesson_date', $lessonDateString)
             ->first();
 
         if ($attendance) {
@@ -129,7 +148,7 @@ class CalendarController extends Controller
             LessonAttendance::create([
                 'student_id' => $student->id,
                 'class_session_id' => $classSession->id,
-                'lesson_date' => $lessonDate,
+                'lesson_date' => $lessonDateString,
             ]);
             $message = '수업 완료 표시를 저장했습니다.';
         }

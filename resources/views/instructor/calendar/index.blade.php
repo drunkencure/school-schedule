@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $today = \Carbon\Carbon::today();
+    @endphp
     <div class="card">
         <div style="display:flex; align-items:center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
             <h2>{{ $monthDate->format('Y년 m월') }} 수업 달력</h2>
@@ -99,6 +102,11 @@
                                     @foreach ($eligibleStudents as $student)
                                         @php
                                             $hasAttendance = isset($attendanceMap[$student->id][$session->id][$dateKey]);
+                                            $registeredAt = $student->registered_at
+                                                ? $student->registered_at->copy()->startOfDay()
+                                                : $student->created_at->copy()->startOfDay();
+                                            $lessonDay = $day['date']->copy()->startOfDay();
+                                            $canToggle = $lessonDay->gte($registeredAt) && $lessonDay->lte($today);
                                         @endphp
                                         <div class="calendar-student">
                                             <span>{{ $student->name }}</span>
@@ -107,7 +115,9 @@
                                                 <input type="hidden" name="student_id" value="{{ $student->id }}">
                                                 <input type="hidden" name="class_session_id" value="{{ $session->id }}">
                                                 <input type="hidden" name="lesson_date" value="{{ $dateKey }}">
-                                                <button type="submit" class="btn btn-mini {{ $hasAttendance ? 'btn-secondary' : '' }}">
+                                                <button type="submit"
+                                                        class="btn btn-mini {{ $hasAttendance ? 'btn-secondary' : '' }}"
+                                                        {{ $canToggle ? '' : 'disabled' }}>
                                                     {{ $hasAttendance ? '완료됨' : '완료' }}
                                                 </button>
                                             </form>
