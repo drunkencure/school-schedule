@@ -208,4 +208,64 @@
             </div>
         </aside>
     </div>
+
+    <div class="card">
+        <h3>수업료 입금 요청</h3>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>수강생</th>
+                <th>진행 회차</th>
+                <th>요청 조건</th>
+                <th>처리 상태</th>
+                <th>요청</th>
+            </tr>
+            </thead>
+            <tbody>
+            @forelse ($billingStats as $studentId => $stat)
+                @php
+                    $student = $stat['student'];
+                    $latestRequest = $stat['latestRequest'];
+                @endphp
+                <tr>
+                    <td>{{ $student->name }}</td>
+                    <td>{{ $stat['count'] }}회</td>
+                    <td>{{ $stat['cycle'] }}회마다 요청</td>
+                    <td>
+                        @if ($latestRequest)
+                            @if ($latestRequest->status === 'pending')
+                                <span class="status-badge status-pending">요청 대기 중</span>
+                                <div class="text-muted">요청: {{ $latestRequest->requested_at->format('Y-m-d') }}</div>
+                            @else
+                                <span class="status-badge status-completed">입금 처리 완료</span>
+                                @if ($latestRequest->processed_at)
+                                    <div class="text-muted">처리: {{ $latestRequest->processed_at->format('Y-m-d') }}</div>
+                                @endif
+                            @endif
+                        @else
+                            <span class="text-muted">요청 없음</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if ($stat['eligible'])
+                            <form method="POST" action="{{ route('calendar.tuition.request') }}">
+                                @csrf
+                                <input type="hidden" name="student_id" value="{{ $student->id }}">
+                                <button type="submit" class="btn">입금 요청</button>
+                            </form>
+                        @elseif ($stat['pending'])
+                            요청 대기 중
+                        @else
+                            회차 부족
+                        @endif
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="5">등록된 수강생이 없습니다.</td>
+                </tr>
+            @endforelse
+            </tbody>
+        </table>
+    </div>
 @endsection
