@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <h2>시간표 수정</h2>
+    <h2>이번주 시간표</h2>
 
     <div class="card">
         <h3>수업 추가</h3>
