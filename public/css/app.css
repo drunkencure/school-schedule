@@ -385,6 +385,75 @@ a {
     color: #94a3b8;
 }
 
+.calendar-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+    align-items: start;
+}
+
+.calendar-sidebar {
+    position: sticky;
+    top: 90px;
+}
+
+.sidebar-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sidebar-section-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.sidebar-section-subtitle {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 10px;
+}
+
+.sidebar-list {
+    display: grid;
+    gap: 12px;
+}
+
+.sidebar-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    background: #f8fafc;
+    display: grid;
+    gap: 8px;
+}
+
+.sidebar-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.sidebar-meta {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.sidebar-empty {
+    font-size: 12px;
+    color: #94a3b8;
+    background: #f8fafc;
+    border: 1px dashed #cbd5f5;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.status-soon {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
 @media (max-width: 768px) {
     .nav-actions {
         width: 100%;
@@ -405,5 +474,13 @@ a {
 
     .calendar-table {
         min-width: 0;
+    }
+
+    .calendar-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .calendar-sidebar {
+        position: static;
     }
 }
