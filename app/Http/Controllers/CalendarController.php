@@ -26,7 +26,7 @@ class CalendarController extends Controller
             ->get();
 
         foreach ($sessions as $session) {
-            $session->start_date = $this->nextSessionStartDate($session->created_at, (int) $session->weekday);
+            $sessionStartDate = null;
             foreach ($session->students as $student) {
                 if (! $student->pivot) {
                     continue;
@@ -36,9 +36,17 @@ class CalendarController extends Controller
 
                 if ($baseDate) {
                     $startBase = $baseDate instanceof Carbon ? $baseDate : Carbon::parse($baseDate);
-                    $student->pivot->start_date = $this->nextSessionStartDate($startBase, (int) $session->weekday);
+                    $studentStartDate = $this->nextSessionStartDate($startBase, (int) $session->weekday);
+                    $student->pivot->start_date = $studentStartDate;
+
+                    if (! $sessionStartDate || $studentStartDate->lt($sessionStartDate)) {
+                        $sessionStartDate = $studentStartDate->copy();
+                    }
                 }
             }
+
+            $session->start_date = $sessionStartDate
+                ?? $this->nextSessionStartDate($session->created_at, (int) $session->weekday);
         }
 
         $sessions = $sessions->groupBy('weekday');

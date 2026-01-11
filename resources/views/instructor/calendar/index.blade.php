@@ -118,7 +118,7 @@
                                                 <button type="submit"
                                                         class="btn btn-mini {{ $hasAttendance ? 'btn-secondary' : '' }}"
                                                         {{ $canToggle ? '' : 'disabled' }}>
-                                                    {{ $hasAttendance ? '완료됨' : '완료' }}
+                                                    {{ $hasAttendance ? '진행 완료' : '진행전' }}
                                                 </button>
                                             </form>
                                         </div>
