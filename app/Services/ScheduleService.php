@@ -26,6 +26,25 @@ class ScheduleService
             ->first();
 
         if ($existing) {
+            $activeStudents = $existing->students()->count();
+
+            if ($activeStudents === 0) {
+                if ($existing->subject_id !== $subjectId) {
+                    throw ValidationException::withMessages([
+                        'subject_id' => '해당 시간대에는 다른 과목 수업이 있습니다.',
+                    ]);
+                }
+
+                if ($existing->is_group) {
+                    $existing->is_group = false;
+                    $existing->save();
+                }
+
+                $existing->students()->syncWithoutDetaching([$student->id]);
+
+                return $existing;
+            }
+
             if (! $confirmGroup) {
                 throw ValidationException::withMessages([
                     'start_time' => '이미 그 시간대 등록된 학생이 있습니다.',

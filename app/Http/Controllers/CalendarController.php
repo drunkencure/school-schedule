@@ -21,7 +21,9 @@ class CalendarController extends Controller
         $start = $monthDate->copy()->startOfWeek(Carbon::MONDAY);
         $end = $monthDate->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
 
-        $sessions = ClassSession::with(['students', 'subject'])
+        $sessions = ClassSession::with(['students' => function ($query) {
+            $query->withTrashed();
+        }, 'subject'])
             ->where('instructor_id', $instructor->id)
             ->get();
 
@@ -51,7 +53,7 @@ class CalendarController extends Controller
 
         $sessions = $sessions->groupBy('weekday');
 
-        $studentIds = $instructor->students()->pluck('id');
+        $studentIds = $instructor->students()->withTrashed()->pluck('id');
         $attendances = LessonAttendance::whereIn('student_id', $studentIds)
             ->whereBetween('lesson_date', [$start->toDateString(), $end->toDateString()])
             ->get();
@@ -82,6 +84,31 @@ class CalendarController extends Controller
         }
 
         $billingStats = $this->buildBillingStats($instructor);
+        $tuitionCandidates = collect($billingStats)->map(function ($stat) {
+            $remaining = max(0, $stat['cycle'] - $stat['count']);
+            $stat['remaining'] = $remaining;
+
+            return $stat;
+        });
+        $tuitionReady = $tuitionCandidates
+            ->filter(function ($stat) {
+                return $stat['eligible'] && ! $stat['pending'];
+            })
+            ->sortBy(function ($stat) {
+                return $stat['student']->name;
+            })
+            ->values();
+        $tuitionSoon = $tuitionCandidates
+            ->filter(function ($stat) {
+                return (! $stat['eligible'])
+                    && ! $stat['pending']
+                    && $stat['remaining'] >= 1
+                    && $stat['remaining'] <= 2;
+            })
+            ->sortBy(function ($stat) {
+                return [$stat['remaining'], $stat['student']->name];
+            })
+            ->values();
         $pendingTuitionRequests = TuitionRequest::with('student')
             ->where('instructor_id', $instructor->id)
             ->where('status', 'pending')
@@ -100,6 +127,8 @@ class CalendarController extends Controller
             'days' => config('schedule.days'),
             'attendanceMap' => $attendanceMap,
             'billingStats' => $billingStats,
+            'tuitionReady' => $tuitionReady,
+            'tuitionSoon' => $tuitionSoon,
             'pendingTuitionRequests' => $pendingTuitionRequests,
             'recentCompletedTuitionRequests' => $recentCompletedTuitionRequests,
         ]);
@@ -120,7 +149,7 @@ class CalendarController extends Controller
             'lesson_date' => ['required', 'date'],
         ]);
 
-        $student = Student::findOrFail($validated['student_id']);
+        $student = Student::withTrashed()->findOrFail($validated['student_id']);
         $classSession = ClassSession::with('students')->findOrFail($validated['class_session_id']);
         $lessonDate = Carbon::parse($validated['lesson_date'])->startOfDay();
         $lessonDateString = $lessonDate->toDateString();

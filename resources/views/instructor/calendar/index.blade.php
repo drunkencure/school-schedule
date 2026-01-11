@@ -85,7 +85,18 @@
                                 @php
                                     $eligibleStudents = $session->students->filter(function ($student) use ($day) {
                                         $startDate = $student->pivot->start_date ?? null;
-                                        return ! $startDate || $day['date']->gte($startDate);
+                                        if ($startDate && $day['date']->lt($startDate)) {
+                                            return false;
+                                        }
+
+                                        if ($student->trashed()) {
+                                            $endedAt = $student->deleted_at ? $student->deleted_at->copy()->startOfDay() : null;
+                                            if ($endedAt && $day['date']->gt($endedAt)) {
+                                                return false;
+                                            }
+                                        }
+
+                                        return true;
                                     });
                                 @endphp
                                 @if ($eligibleStudents->isEmpty())
@@ -105,8 +116,14 @@
                                             $registeredAt = $student->registered_at
                                                 ? $student->registered_at->copy()->startOfDay()
                                                 : $student->created_at->copy()->startOfDay();
+                                            $deletedAt = $student->deleted_at
+                                                ? $student->deleted_at->copy()->startOfDay()
+                                                : null;
                                             $lessonDay = $day['date']->copy()->startOfDay();
                                             $canToggle = $lessonDay->gte($registeredAt) && $lessonDay->lte($today);
+                                            if ($deletedAt && $lessonDay->gt($deletedAt)) {
+                                                $canToggle = false;
+                                            }
                                         @endphp
                                         <div class="calendar-student">
                                             <span>{{ $student->name }}</span>

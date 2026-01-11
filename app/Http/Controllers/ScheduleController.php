@@ -113,6 +113,7 @@ class ScheduleController extends Controller
 
         $sessions = ClassSession::with(['students', 'subject'])
             ->where('instructor_id', $instructor->id)
+            ->whereHas('students')
             ->get();
 
         $grid = [];

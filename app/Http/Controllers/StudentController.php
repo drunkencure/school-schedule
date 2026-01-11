@@ -102,21 +102,17 @@ class StudentController extends Controller
     public function destroy(Student $student)
     {
         $this->authorizeStudent($student);
-        $student->load('classSessions.students');
+        $student->load('classSessions');
+        $student->delete();
 
         foreach ($student->classSessions as $session) {
-            $session->students()->detach($student->id);
             $remaining = $session->students()->count();
 
-            if ($remaining === 0) {
-                $session->delete();
-            } elseif ($remaining === 1 && $session->is_group) {
+            if ($remaining <= 1 && $session->is_group) {
                 $session->is_group = false;
                 $session->save();
             }
         }
-
-        $student->delete();
 
         return redirect()->route('students.index')->with('status', '수강생을 삭제했습니다.');
     }
