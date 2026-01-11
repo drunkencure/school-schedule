@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Subject;
+use App\Models\Student;
 use App\Models\TuitionRequest;
 use App\Models\User;
 use Carbon\Carbon;
@@ -45,6 +46,31 @@ class AdminController extends Controller
             'rejectedInstructors' => $rejectedInstructors,
             'subjects' => $subjects,
             'tuitionRequests' => $tuitionRequests,
+        ]);
+    }
+
+    public function instructorsIndex()
+    {
+        $instructors = User::where('role', 'instructor')
+            ->with(['subjects', 'classSessions'])
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.instructors.index', [
+            'instructors' => $instructors,
+            'days' => config('schedule.days'),
+        ]);
+    }
+
+    public function studentsIndex()
+    {
+        $students = Student::with(['instructor', 'classSessions.subject'])
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.students.index', [
+            'students' => $students,
+            'days' => config('schedule.days'),
         ]);
     }
 

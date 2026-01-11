@@ -22,7 +22,9 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/instructors', [AdminController::class, 'instructorsIndex'])->name('admin.instructors.index');
     Route::post('/subjects', [AdminController::class, 'storeSubject'])->name('admin.subjects.store');
+    Route::get('/students', [AdminController::class, 'studentsIndex'])->name('admin.students.index');
     Route::get('/instructors/{user}', [AdminController::class, 'showInstructor'])->name('admin.instructors.show');
     Route::post('/instructors/{user}/approve', [AdminController::class, 'approve'])->name('admin.instructors.approve');
     Route::post('/instructors/{user}/reject', [AdminController::class, 'reject'])->name('admin.instructors.reject');
