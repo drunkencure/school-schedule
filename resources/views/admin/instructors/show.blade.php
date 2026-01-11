@@ -56,19 +56,21 @@
             </tr>
             </thead>
             <tbody>
-            @forelse ($instructor->students as $student)
+            @forelse ($sessionStudents as $student)
                 <tr>
                     <td>{{ $student->name }}</td>
                     <td>
-                        @if ($student->classSessions->isEmpty())
-                            등록된 수업 없음
-                        @else
-                            @php
-                                $sortedSessions = $student->classSessions->sortBy(function ($session) {
+                        @php
+                            $filteredSessions = $student->classSessions
+                                ->where('instructor_id', $instructor->id)
+                                ->sortBy(function ($session) {
                                     return sprintf('%02d-%s', $session->weekday, $session->start_time);
                                 });
-                            @endphp
-                            @foreach ($sortedSessions as $session)
+                        @endphp
+                        @if ($filteredSessions->isEmpty())
+                            등록된 수업 없음
+                        @else
+                            @foreach ($filteredSessions as $session)
                                 <div>
                                     {{ $days[$session->weekday] ?? '' }}
                                     {{ \Carbon\Carbon::createFromFormat('H:i:s', $session->start_time)->format('H:i') }}

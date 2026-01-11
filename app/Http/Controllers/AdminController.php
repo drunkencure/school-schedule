@@ -49,28 +49,40 @@ class AdminController extends Controller
         ]);
     }
 
-    public function instructorsIndex()
+    public function instructorsIndex(Request $request)
     {
+        $search = trim((string) $request->query('search', ''));
+
         $instructors = User::where('role', 'instructor')
             ->with(['subjects', 'classSessions'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where('name', 'like', '%'.$search.'%');
+            })
             ->orderBy('name')
             ->get();
 
         return view('admin.instructors.index', [
             'instructors' => $instructors,
             'days' => config('schedule.days'),
+            'search' => $search,
         ]);
     }
 
-    public function studentsIndex()
+    public function studentsIndex(Request $request)
     {
-        $students = Student::with(['instructor', 'classSessions.subject'])
+        $search = trim((string) $request->query('search', ''));
+
+        $students = Student::with(['instructor.subjects', 'classSessions.subject'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where('name', 'like', '%'.$search.'%');
+            })
             ->orderBy('name')
             ->get();
 
         return view('admin.students.index', [
             'students' => $students,
             'days' => config('schedule.days'),
+            'search' => $search,
         ]);
     }
 
@@ -135,14 +147,22 @@ class AdminController extends Controller
                 $query->orderBy('name');
             },
             'students.classSessions.subject',
-            'classSessions.students',
+            'classSessions.students.classSessions.subject',
             'classSessions.subject',
         ]);
 
         $gridData = $this->buildGrid($user);
+        $sessionStudents = $user->classSessions
+            ->flatMap(function ($session) {
+                return $session->students;
+            })
+            ->unique('id')
+            ->sortBy('name')
+            ->values();
 
         return view('admin.instructors.show', [
             'instructor' => $user,
+            'sessionStudents' => $sessionStudents,
             ...$gridData,
         ]);
     }

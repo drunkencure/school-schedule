@@ -5,6 +5,13 @@
 
     <div class="card">
         <h3>전체 수강생</h3>
+        <form method="GET" action="{{ route('admin.students.index') }}" style="margin-bottom: 16px; display: flex; justify-content: flex-end; gap: 8px; align-items: flex-end; flex-wrap: wrap;">
+            <div class="form-group" style="margin-bottom: 0; width: 240px;">
+                <label for="student-search" style="margin-bottom: 4px; font-size: 12px;">수강생 이름 검색</label>
+                <input id="student-search" type="text" name="search" value="{{ $search ?? '' }}" placeholder="이름을 입력하세요">
+            </div>
+            <button type="submit" class="btn btn-secondary">검색</button>
+        </form>
         <table class="table">
             <thead>
             <tr>
@@ -25,7 +32,22 @@
                 <tr>
                     <td>{{ $student->name }}</td>
                     <td>{{ $subjects->isEmpty() ? '과목 미지정' : $subjects->join(', ') }}</td>
-                    <td>{{ $student->instructor->name ?? '' }}</td>
+                    @php
+                        $instructor = $student->instructor;
+                        $instructorSubjects = $instructor ? $instructor->subjects->pluck('name')->filter()->unique()->values() : collect();
+                        $instructorLabel = $instructor
+                            ? $instructor->name.'('.($instructorSubjects->isEmpty() ? '과목 미지정' : $instructorSubjects->join(', ')).')'
+                            : '';
+                    @endphp
+                    <td>
+                        @if ($instructor)
+                            <a href="{{ route('admin.instructors.show', $instructor) }}" style="text-decoration: underline;">
+                                {{ $instructorLabel }}
+                            </a>
+                        @else
+                            {{ $instructorLabel }}
+                        @endif
+                    </td>
                     <td>
                         @if ($sortedSessions->isEmpty())
                             등록된 수업 없음

@@ -5,6 +5,13 @@
 
     <div class="card">
         <h3>등록된 강사</h3>
+        <form method="GET" action="{{ route('admin.instructors.index') }}" style="margin-bottom: 16px; display: flex; justify-content: flex-end; gap: 8px; align-items: flex-end; flex-wrap: wrap;">
+            <div class="form-group" style="margin-bottom: 0; width: 240px;">
+                <label for="instructor-search" style="margin-bottom: 4px; font-size: 12px;">강사 이름 검색</label>
+                <input id="instructor-search" type="text" name="search" value="{{ $search ?? '' }}" placeholder="이름을 입력하세요">
+            </div>
+            <button type="submit" class="btn btn-secondary">검색</button>
+        </form>
         <table class="table">
             <thead>
             <tr>
