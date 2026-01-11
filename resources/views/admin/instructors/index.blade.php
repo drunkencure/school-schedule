@@ -4,6 +4,46 @@
     <h2>강사 메뉴</h2>
 
     <div class="card">
+        <h3>강사 추가</h3>
+        <form method="POST" action="{{ route('admin.instructors.store') }}">
+            @csrf
+            <div class="grid two">
+                <div class="form-group">
+                    <label for="instructor_login_id">아이디</label>
+                    <input type="text" id="instructor_login_id" name="login_id" value="{{ old('login_id') }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="instructor_name">이름</label>
+                    <input type="text" id="instructor_name" name="name" value="{{ old('name') }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="instructor_email">이메일</label>
+                    <input type="email" id="instructor_email" name="email" value="{{ old('email') }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="instructor_password">비밀번호</label>
+                    <input type="password" id="instructor_password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label>담당 과목 (1개 이상 선택)</label>
+                    <div class="checkbox-group">
+                        @foreach ($subjects as $subject)
+                            <label>
+                                <input type="checkbox"
+                                       name="subjects[]"
+                                       value="{{ $subject->id }}"
+                                       {{ collect(old('subjects', []))->contains($subject->id) ? 'checked' : '' }}>
+                                {{ $subject->name }}
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-secondary">강사 등록</button>
+        </form>
+    </div>
+
+    <div class="card">
         <h3>등록된 강사</h3>
         <form method="GET" action="{{ route('admin.instructors.index') }}" style="margin-bottom: 16px; display: flex; justify-content: flex-end; gap: 8px; align-items: flex-end; flex-wrap: wrap;">
             <div class="form-group" style="margin-bottom: 0; width: 240px;">

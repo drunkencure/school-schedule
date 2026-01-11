@@ -8,6 +8,8 @@ use App\Models\TuitionRequest;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
@@ -64,8 +66,34 @@ class AdminController extends Controller
         return view('admin.instructors.index', [
             'instructors' => $instructors,
             'days' => config('schedule.days'),
+            'subjects' => Subject::orderBy('name')->get(),
             'search' => $search,
         ]);
+    }
+
+    public function storeInstructor(Request $request)
+    {
+        $validated = $request->validate([
+            'login_id' => ['required', 'string', 'max:50', 'unique:users,login_id'],
+            'name' => ['required', 'string', 'max:100'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:6'],
+            'subjects' => ['required', 'array', 'min:1'],
+            'subjects.*' => ['integer', Rule::exists('subjects', 'id')],
+        ]);
+
+        $instructor = User::create([
+            'login_id' => $validated['login_id'],
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role' => 'instructor',
+            'status' => 'approved',
+        ]);
+
+        $instructor->subjects()->sync($validated['subjects']);
+
+        return back()->with('status', '강사를 등록했습니다.');
     }
 
     public function studentsIndex(Request $request)
@@ -82,8 +110,37 @@ class AdminController extends Controller
         return view('admin.students.index', [
             'students' => $students,
             'days' => config('schedule.days'),
+            'instructors' => User::where('role', 'instructor')
+                ->where('status', 'approved')
+                ->orderBy('name')
+                ->get(),
             'search' => $search,
         ]);
+    }
+
+    public function storeStudent(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'registered_at' => ['required', 'date'],
+            'billing_cycle_count' => ['required', 'integer', 'min:1', 'max:50'],
+            'instructor_id' => [
+                'required',
+                Rule::exists('users', 'id')->where(function ($query) {
+                    $query->where('role', 'instructor')
+                        ->where('status', 'approved');
+                }),
+            ],
+        ]);
+
+        Student::create([
+            'instructor_id' => $validated['instructor_id'],
+            'name' => $validated['name'],
+            'registered_at' => $validated['registered_at'],
+            'billing_cycle_count' => $validated['billing_cycle_count'],
+        ]);
+
+        return back()->with('status', '수강생을 등록했습니다.');
     }
 
     public function approve(User $user)

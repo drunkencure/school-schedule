@@ -13,7 +13,7 @@
                     <select id="student_id" name="student_id" required {{ $students->isEmpty() ? 'disabled' : '' }}>
                         <option value="">선택</option>
                         @foreach ($students as $student)
-                            <option value="{{ $student->id }}" {{ old('student_id') == $student->id ? 'selected' : '' }}>
+                            <option value="{{ $student->id }}" {{ old('student_id', $selectedStudentId ?? '') == $student->id ? 'selected' : '' }}>
                                 {{ $student->name }}
                             </option>
                         @endforeach

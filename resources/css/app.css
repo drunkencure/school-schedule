@@ -148,9 +148,21 @@ a {
 }
 
 .checkbox-group {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 8px;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 12px;
+}
+
+.checkbox-group label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.checkbox-group input[type="checkbox"] {
+    margin: 0;
 }
 
 .alert {
@@ -273,6 +285,13 @@ a {
     display: grid;
     gap: 6px;
     font-size: 13px;
+}
+
+.notice-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
 }
 
 .schedule-grid {

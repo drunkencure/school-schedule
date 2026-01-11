@@ -16,19 +16,31 @@ class ScheduleController extends Controller
     {
         $instructor = Auth::user();
         $gridData = $this->buildGrid($instructor);
+        $pendingStudents = $instructor->students()
+            ->whereDoesntHave('classSessions')
+            ->orderBy('name')
+            ->get();
 
-        return view('instructor.dashboard', $gridData);
+        return view('instructor.dashboard', [
+            ...$gridData,
+            'pendingStudents' => $pendingStudents,
+        ]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $instructor = Auth::user();
         $gridData = $this->buildGrid($instructor);
+        $selectedStudentId = $request->query('student_id');
+        if ($selectedStudentId) {
+            $selectedStudentId = $instructor->students()->where('id', $selectedStudentId)->value('id');
+        }
 
         return view('instructor.schedule.index', [
             ...$gridData,
             'students' => $instructor->students()->orderBy('name')->get(),
             'subjects' => $instructor->subjects()->orderBy('name')->get(),
+            'selectedStudentId' => $selectedStudentId,
         ]);
     }
 

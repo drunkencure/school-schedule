@@ -4,6 +4,43 @@
     <h2>수강생 메뉴</h2>
 
     <div class="card">
+        <h3>수강생 추가</h3>
+        <form method="POST" action="{{ route('admin.students.store') }}">
+            @csrf
+            <div class="grid two">
+                <div class="form-group">
+                    <label for="student_name">이름</label>
+                    <input type="text" id="student_name" name="name" value="{{ old('name') }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="student_registered_at">등록일</label>
+                    <input type="date" id="student_registered_at" name="registered_at" value="{{ old('registered_at', now()->toDateString()) }}" required>
+                </div>
+                <div class="form-group" style="max-width: 140px;">
+                    <label for="student_billing_cycle">수업료 요청 회차</label>
+                    <input type="number" id="student_billing_cycle" name="billing_cycle_count" value="{{ old('billing_cycle_count', 4) }}" min="1" max="50" required>
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 260px;">
+                    <label for="student_instructor">담당 강사</label>
+                    <select id="student_instructor" name="instructor_id" required>
+                        <option value="">선택</option>
+                        @foreach ($instructors as $instructor)
+                            @php
+                                $subjectNames = $instructor->subjects->pluck('name')->filter()->unique()->values();
+                                $subjectLabel = $subjectNames->isEmpty() ? '과목 미지정' : $subjectNames->join(', ');
+                            @endphp
+                            <option value="{{ $instructor->id }}" {{ old('instructor_id') == $instructor->id ? 'selected' : '' }}>
+                                {{ $instructor->name }} ({{ $subjectLabel }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-secondary">수강생 등록</button>
+        </form>
+    </div>
+
+    <div class="card">
         <h3>전체 수강생</h3>
         <form method="GET" action="{{ route('admin.students.index') }}" style="margin-bottom: 16px; display: flex; justify-content: flex-end; gap: 8px; align-items: flex-end; flex-wrap: wrap;">
             <div class="form-group" style="margin-bottom: 0; width: 240px;">
