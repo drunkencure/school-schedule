@@ -6,6 +6,7 @@ use App\Models\Subject;
 use App\Models\Student;
 use App\Models\TuitionRequest;
 use App\Models\User;
+use App\Models\ClassSession;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -49,6 +50,11 @@ class AdminController extends Controller
             'subjects' => $subjects,
             'tuitionRequests' => $tuitionRequests,
         ]);
+    }
+
+    public function scheduleIndex()
+    {
+        return view('admin.schedule.index', $this->buildScheduleOverview());
     }
 
     public function instructorsIndex(Request $request)
@@ -262,5 +268,63 @@ class AdminController extends Controller
         }
 
         return $slots;
+    }
+
+    private function buildScheduleOverview(): array
+    {
+        $days = config('schedule.days');
+        $timeSlots = $this->timeSlots();
+        $todayKey = Carbon::now()->isoWeekday();
+        $weekStart = Carbon::now()->startOfWeek(Carbon::MONDAY);
+        $weekEnd = (clone $weekStart)->addDays(6);
+        $weekRange = sprintf('%s ~ %s', $weekStart->format('Y-m-d'), $weekEnd->format('Y-m-d'));
+
+        $approvedInstructors = User::where('role', 'instructor')
+            ->where('status', 'approved')
+            ->orderBy('name')
+            ->get();
+
+        $scheduleSessions = ClassSession::with(['instructor', 'subject', 'students'])
+            ->whereHas('instructor', function ($query) {
+                $query->where('role', 'instructor')
+                    ->where('status', 'approved');
+            })
+            ->get();
+
+        $scheduleGrid = [];
+        $palette = [
+            'instructor-color-1',
+            'instructor-color-2',
+            'instructor-color-3',
+            'instructor-color-4',
+            'instructor-color-5',
+            'instructor-color-6',
+            'instructor-color-7',
+            'instructor-color-8',
+        ];
+        $instructorColors = [];
+
+        foreach ($scheduleSessions as $session) {
+            $timeKey = Carbon::createFromFormat('H:i:s', $session->start_time)->format('H:i');
+            $scheduleGrid[$session->weekday][$timeKey][] = $session;
+        }
+
+        foreach ($approvedInstructors->values() as $index => $instructor) {
+            $instructorColors[$instructor->id] = $palette[$index % count($palette)];
+        }
+
+        return [
+            'days' => $days,
+            'timeSlots' => $timeSlots,
+            'todayKey' => $todayKey,
+            'weekRange' => $weekRange,
+            'scheduleGrid' => $scheduleGrid,
+            'scheduleSessions' => $scheduleSessions,
+            'approvedInstructors' => $approvedInstructors,
+            'instructorColors' => $instructorColors,
+            'approvedInstructorsCount' => $approvedInstructors->count(),
+            'scheduleSessionCount' => $scheduleSessions->count(),
+            'todaySessionCount' => $scheduleSessions->where('weekday', $todayKey)->count(),
+        ];
     }
 }

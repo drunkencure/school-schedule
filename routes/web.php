@@ -22,6 +22,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/schedule', [AdminController::class, 'scheduleIndex'])->name('admin.schedule.index');
     Route::get('/instructors', [AdminController::class, 'instructorsIndex'])->name('admin.instructors.index');
     Route::post('/instructors', [AdminController::class, 'storeInstructor'])->name('admin.instructors.store');
     Route::post('/subjects', [AdminController::class, 'storeSubject'])->name('admin.subjects.store');

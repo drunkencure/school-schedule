@@ -21,6 +21,7 @@
             <nav class="nav">
                 @if (auth()->user()->role === 'admin')
                     <a href="{{ route('admin.dashboard') }}">관리자</a>
+                    <a href="{{ route('admin.schedule.index') }}">전체 시간표</a>
                     <a href="{{ route('admin.instructors.index') }}">강사 메뉴</a>
                     <a href="{{ route('admin.students.index') }}">수강생 메뉴</a>
                 @else
