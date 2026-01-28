@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AcademyController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\ScheduleController;
@@ -19,15 +20,18 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+Route::post('/academies/select', [AcademyController::class, 'select'])->middleware('auth')->name('academies.select');
 
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'role:admin', 'academy'])->prefix('admin')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/schedule', [AdminController::class, 'scheduleIndex'])->name('admin.schedule.index');
     Route::get('/instructors', [AdminController::class, 'instructorsIndex'])->name('admin.instructors.index');
     Route::post('/instructors', [AdminController::class, 'storeInstructor'])->name('admin.instructors.store');
+    Route::post('/instructors/attach', [AdminController::class, 'attachInstructor'])->name('admin.instructors.attach');
     Route::post('/subjects', [AdminController::class, 'storeSubject'])->name('admin.subjects.store');
     Route::get('/students', [AdminController::class, 'studentsIndex'])->name('admin.students.index');
     Route::post('/students', [AdminController::class, 'storeStudent'])->name('admin.students.store');
+    Route::post('/academies', [AdminController::class, 'storeAcademy'])->name('admin.academies.store');
     Route::get('/instructors/{user}', [AdminController::class, 'showInstructor'])->name('admin.instructors.show');
     Route::post('/instructors/{user}/approve', [AdminController::class, 'approve'])->name('admin.instructors.approve');
     Route::post('/instructors/{user}/reject', [AdminController::class, 'reject'])->name('admin.instructors.reject');
@@ -36,7 +40,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         ->name('admin.tuition-requests.complete');
 });
 
-Route::middleware(['auth', 'role:instructor'])->group(function () {
+Route::middleware(['auth', 'role:instructor', 'academy'])->group(function () {
     Route::get('/dashboard', [ScheduleController::class, 'dashboard'])->name('instructor.dashboard');
 
     Route::resource('students', StudentController::class)->except(['show']);

@@ -7,35 +7,35 @@
                 <h2>{{ $instructor->name }} 강사</h2>
                 <div>아이디: {{ $instructor->login_id }}</div>
                 <div>이메일: {{ $instructor->email }}</div>
-                <div>상태: {{ $instructor->status }}</div>
+                <div>상태: {{ $academyStatus ?? '없음' }}</div>
                 <div>과목: {{ $instructor->subjects->pluck('name')->join(', ') ?: '과목 미지정' }}</div>
             </div>
             <div style="display:flex; gap: 10px;">
-                @if ($instructor->status === 'approved')
+                @if ($academyStatus === 'approved')
                     <form method="POST" action="{{ route('admin.instructors.deactivate', $instructor) }}">
                         @csrf
                         <button type="submit" class="btn btn-danger" onclick="return confirm('강사를 비활성화할까요?')">비활성화</button>
                     </form>
                 @endif
-                @if ($instructor->status !== 'rejected')
+                @if ($academyStatus !== 'rejected')
                     <form method="POST" action="{{ route('admin.instructors.reject', $instructor) }}">
                         @csrf
                         <button type="submit" class="btn btn-danger" onclick="return confirm('강사 등록을 거절할까요?')">거절</button>
                     </form>
                 @endif
-                @if ($instructor->status === 'pending')
+                @if ($academyStatus === 'pending')
                     <form method="POST" action="{{ route('admin.instructors.approve', $instructor) }}">
                         @csrf
                         <button type="submit" class="btn">승인</button>
                     </form>
                 @endif
-                @if ($instructor->status === 'inactive')
+                @if ($academyStatus === 'inactive')
                     <form method="POST" action="{{ route('admin.instructors.approve', $instructor) }}">
                         @csrf
                         <button type="submit" class="btn">활성화</button>
                     </form>
                 @endif
-                @if ($instructor->status === 'rejected')
+                @if ($academyStatus === 'rejected')
                     <form method="POST" action="{{ route('admin.instructors.approve', $instructor) }}">
                         @csrf
                         <button type="submit" class="btn">재승인</button>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Subject;
 use App\Models\Student;
 use App\Models\LessonAttendance;
+use App\Models\Academy;
 use App\Models\TuitionRequest;
 use App\Models\User;
 use App\Models\ClassSession;
@@ -17,33 +18,52 @@ class AdminController extends Controller
 {
     public function dashboard()
     {
+        $academyId = session('academy_id');
         $pendingInstructors = User::where('role', 'instructor')
-            ->where('status', 'pending')
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId)
+                    ->where('academy_user.status', 'pending');
+            })
             ->orderBy('created_at')
             ->get();
 
         $approvedInstructors = User::where('role', 'instructor')
-            ->where('status', 'approved')
-            ->with('subjects')
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId)
+                    ->where('academy_user.status', 'approved');
+            })
+            ->with(['subjects' => function ($query) use ($academyId) {
+                $query->where('academy_id', $academyId);
+            }])
             ->orderBy('name')
             ->get();
 
         $inactiveInstructors = User::where('role', 'instructor')
-            ->where('status', 'inactive')
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId)
+                    ->where('academy_user.status', 'inactive');
+            })
             ->orderBy('name')
             ->get();
 
         $rejectedInstructors = User::where('role', 'instructor')
-            ->where('status', 'rejected')
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId)
+                    ->where('academy_user.status', 'rejected');
+            })
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $subjects = Subject::orderBy('name')->get();
+        $subjects = Subject::where('academy_id', $academyId)->orderBy('name')->get();
         $tuitionRequests = TuitionRequest::with(['instructor', 'student'])
+            ->whereHas('student.academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId);
+            })
             ->orderByDesc('requested_at')
             ->get();
 
         return view('admin.dashboard', [
+            'academies' => Academy::orderBy('name')->get(),
             'pendingInstructors' => $pendingInstructors,
             'approvedInstructors' => $approvedInstructors,
             'inactiveInstructors' => $inactiveInstructors,
@@ -60,10 +80,18 @@ class AdminController extends Controller
 
     public function instructorsIndex(Request $request)
     {
+        $academyId = session('academy_id');
         $search = trim((string) $request->query('search', ''));
 
         $instructors = User::where('role', 'instructor')
-            ->with(['subjects', 'classSessions'])
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId);
+            })
+            ->with(['subjects' => function ($query) use ($academyId) {
+                $query->where('academy_id', $academyId);
+            }, 'classSessions' => function ($query) use ($academyId) {
+                $query->where('academy_id', $academyId);
+            }])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where('name', 'like', '%'.$search.'%');
             })
@@ -73,20 +101,27 @@ class AdminController extends Controller
         return view('admin.instructors.index', [
             'instructors' => $instructors,
             'days' => config('schedule.days'),
-            'subjects' => Subject::orderBy('name')->get(),
+            'subjects' => Subject::where('academy_id', $academyId)->orderBy('name')->get(),
+            'availableInstructors' => User::where('role', 'instructor')
+                ->whereDoesntHave('academies', function ($query) use ($academyId) {
+                    $query->where('academies.id', $academyId);
+                })
+                ->orderBy('name')
+                ->get(),
             'search' => $search,
         ]);
     }
 
     public function storeInstructor(Request $request)
     {
+        $academyId = session('academy_id');
         $validated = $request->validate([
             'login_id' => ['required', 'string', 'max:50', 'unique:users,login_id'],
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
             'subjects' => ['required', 'array', 'min:1'],
-            'subjects.*' => ['integer', Rule::exists('subjects', 'id')],
+            'subjects.*' => ['integer', Rule::exists('subjects', 'id')->where('academy_id', $academyId)],
         ]);
 
         $instructor = User::create([
@@ -99,17 +134,58 @@ class AdminController extends Controller
         ]);
 
         $instructor->subjects()->sync($validated['subjects']);
+        $instructor->academies()->syncWithoutDetaching([
+            $academyId => ['status' => 'approved'],
+        ]);
 
         return back()->with('status', '강사를 등록했습니다.');
     }
 
+    public function attachInstructor(Request $request)
+    {
+        $academyId = session('academy_id');
+        $validated = $request->validate([
+            'instructor_id' => [
+                'required',
+                Rule::exists('users', 'id')->where(function ($query) {
+                    $query->where('role', 'instructor');
+                }),
+            ],
+        ]);
+
+        $instructor = User::where('role', 'instructor')
+            ->whereKey($validated['instructor_id'])
+            ->firstOrFail();
+
+        $instructor->academies()->syncWithoutDetaching([
+            $academyId => ['status' => 'approved'],
+        ]);
+        if ($instructor->status !== 'approved') {
+            $instructor->status = 'approved';
+            $instructor->save();
+        }
+
+        return back()->with('status', '강사를 학원에 연결했습니다.');
+    }
+
     public function studentsIndex(Request $request)
     {
+        $academyId = session('academy_id');
         $search = trim((string) $request->query('search', ''));
 
-        $students = Student::with(['instructor.subjects', 'classSessions.subject'])
+        $students = Student::with([
+            'instructor.subjects' => function ($query) use ($academyId) {
+                $query->where('academy_id', $academyId);
+            },
+            'classSessions' => function ($query) use ($academyId) {
+                $query->where('academy_id', $academyId)->with('subject');
+            },
+        ])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where('name', 'like', '%'.$search.'%');
+            })
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId);
             })
             ->orderBy('name')
             ->get();
@@ -118,7 +194,13 @@ class AdminController extends Controller
             'students' => $students,
             'days' => config('schedule.days'),
             'instructors' => User::where('role', 'instructor')
-                ->where('status', 'approved')
+                ->whereHas('academies', function ($query) use ($academyId) {
+                    $query->where('academies.id', $academyId)
+                        ->where('academy_user.status', 'approved');
+                })
+                ->with(['subjects' => function ($query) use ($academyId) {
+                    $query->where('academy_id', $academyId);
+                }])
                 ->orderBy('name')
                 ->get(),
             'search' => $search,
@@ -127,6 +209,7 @@ class AdminController extends Controller
 
     public function storeStudent(Request $request)
     {
+        $academyId = session('academy_id');
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'registered_at' => ['required', 'date'],
@@ -134,18 +217,26 @@ class AdminController extends Controller
             'instructor_id' => [
                 'required',
                 Rule::exists('users', 'id')->where(function ($query) {
-                    $query->where('role', 'instructor')
-                        ->where('status', 'approved');
+                    $query->where('role', 'instructor');
                 }),
             ],
         ]);
 
-        Student::create([
+        User::where('role', 'instructor')
+            ->whereKey($validated['instructor_id'])
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId)
+                    ->where('academy_user.status', 'approved');
+            })
+            ->firstOrFail();
+
+        $student = Student::create([
             'instructor_id' => $validated['instructor_id'],
             'name' => $validated['name'],
             'registered_at' => $validated['registered_at'],
             'billing_cycle_count' => $validated['billing_cycle_count'],
         ]);
+        $student->academies()->syncWithoutDetaching([$academyId]);
 
         return back()->with('status', '수강생을 등록했습니다.');
     }
@@ -153,8 +244,13 @@ class AdminController extends Controller
     public function approve(User $user)
     {
         $this->ensureInstructor($user);
-        $user->status = 'approved';
-        $user->save();
+        $academyId = session('academy_id');
+        $user->academies()->syncWithoutDetaching([$academyId]);
+        $user->academies()->updateExistingPivot($academyId, ['status' => 'approved']);
+        if ($user->status !== 'approved') {
+            $user->status = 'approved';
+            $user->save();
+        }
 
         return back()->with('status', '강사 승인 완료');
     }
@@ -162,8 +258,9 @@ class AdminController extends Controller
     public function reject(User $user)
     {
         $this->ensureInstructor($user);
-        $user->status = 'rejected';
-        $user->save();
+        $academyId = session('academy_id');
+        $user->academies()->syncWithoutDetaching([$academyId]);
+        $user->academies()->updateExistingPivot($academyId, ['status' => 'rejected']);
 
         return back()->with('status', '강사 등록을 거절했습니다.');
     }
@@ -171,25 +268,34 @@ class AdminController extends Controller
     public function deactivate(User $user)
     {
         $this->ensureInstructor($user);
-        $user->status = 'inactive';
-        $user->save();
+        $academyId = session('academy_id');
+        $user->academies()->syncWithoutDetaching([$academyId]);
+        $user->academies()->updateExistingPivot($academyId, ['status' => 'inactive']);
 
         return back()->with('status', '강사를 비활성화했습니다.');
     }
 
     public function storeSubject(Request $request)
     {
+        $academyId = session('academy_id');
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:100', 'unique:subjects,name'],
+            'name' => ['required', 'string', 'max:100', Rule::unique('subjects', 'name')->where('academy_id', $academyId)],
         ]);
 
-        Subject::create($validated);
+        Subject::create([
+            'academy_id' => $academyId,
+            'name' => $validated['name'],
+        ]);
 
         return back()->with('status', '과목을 등록했습니다.');
     }
 
     public function completeTuitionRequest(TuitionRequest $tuitionRequest)
     {
+        $academyId = session('academy_id');
+        if (! $tuitionRequest->student || ! $tuitionRequest->student->academies()->whereKey($academyId)->exists()) {
+            abort(404);
+        }
         if ($tuitionRequest->status !== 'pending') {
             return back()->with('status', '이미 처리된 요청입니다.');
         }
@@ -201,16 +307,41 @@ class AdminController extends Controller
         return back()->with('status', '수업료 입금 처리를 완료했습니다.');
     }
 
+    public function storeAcademy(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'memo' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        Academy::create($validated);
+
+        return back()->with('status', '학원을 등록했습니다.');
+    }
+
     public function showInstructor(User $user)
     {
         $this->ensureInstructor($user);
+        $academyId = session('academy_id');
+
+        if (! $user->academies()->whereKey($academyId)->exists()) {
+            abort(404);
+        }
 
         $user->load([
-            'subjects',
-            'students' => function ($query) {
-                $query->orderBy('name');
+            'subjects' => function ($query) use ($academyId) {
+                $query->where('academy_id', $academyId);
+            },
+            'students' => function ($query) use ($academyId) {
+                $query->whereHas('academies', function ($subQuery) use ($academyId) {
+                    $subQuery->where('academies.id', $academyId);
+                })->orderBy('name');
             },
             'students.classSessions.subject',
+            'classSessions' => function ($query) use ($academyId) {
+                $query->where('academy_id', $academyId);
+            },
             'classSessions.students.classSessions.subject',
             'classSessions.subject',
         ]);
@@ -223,10 +354,12 @@ class AdminController extends Controller
             ->unique('id')
             ->sortBy('name')
             ->values();
+        $academyStatus = $user->academies()->whereKey($academyId)->value('academy_user.status');
 
         return view('admin.instructors.show', [
             'instructor' => $user,
             'sessionStudents' => $sessionStudents,
+            'academyStatus' => $academyStatus,
             ...$gridData,
         ]);
     }
@@ -240,9 +373,10 @@ class AdminController extends Controller
 
     private function buildGrid(User $instructor): array
     {
+        $academyId = session('academy_id');
         $days = config('schedule.days');
         $timeSlots = $this->timeSlots();
-        $sessions = $instructor->classSessions;
+        $sessions = $instructor->classSessions()->where('academy_id', $academyId)->get();
         $grid = [];
 
         foreach ($sessions as $session) {
@@ -273,6 +407,7 @@ class AdminController extends Controller
 
     private function buildScheduleOverview(): array
     {
+        $academyId = session('academy_id');
         $days = config('schedule.days');
         $timeSlots = $this->timeSlots();
         $todayKey = Carbon::now()->isoWeekday();
@@ -287,14 +422,22 @@ class AdminController extends Controller
         }
 
         $approvedInstructors = User::where('role', 'instructor')
-            ->where('status', 'approved')
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId)
+                    ->where('academy_user.status', 'approved');
+            })
             ->orderBy('name')
             ->get();
 
         $scheduleSessions = ClassSession::with(['instructor', 'subject', 'students'])
+            ->where('academy_id', $academyId)
             ->whereHas('instructor', function ($query) {
                 $query->where('role', 'instructor')
                     ->where('status', 'approved');
+            })
+            ->whereHas('instructor.academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId)
+                    ->where('academy_user.status', 'approved');
             })
             ->get();
 

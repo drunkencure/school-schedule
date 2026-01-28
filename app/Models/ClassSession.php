@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Academy;
 
 class ClassSession extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'academy_id',
         'instructor_id',
         'subject_id',
         'weekday',
@@ -26,6 +28,11 @@ class ClassSession extends Model
     public function instructor()
     {
         return $this->belongsTo(User::class, 'instructor_id');
+    }
+
+    public function academy()
+    {
+        return $this->belongsTo(Academy::class);
     }
 
     public function subject()

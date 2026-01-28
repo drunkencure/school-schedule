@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\LessonAttendance;
 use App\Models\TuitionRequest;
+use App\Models\Academy;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Student extends Model
@@ -44,5 +45,10 @@ class Student extends Model
     public function tuitionRequests()
     {
         return $this->hasMany(TuitionRequest::class);
+    }
+
+    public function academies()
+    {
+        return $this->belongsToMany(Academy::class, 'academy_student')->withTimestamps();
     }
 }

@@ -17,6 +17,12 @@
                 <label for="name">이름</label>
                 <input type="text" id="name" name="name" value="{{ old('name') }}" required>
             </div>
+            @if (!empty($defaultAcademy))
+                <div class="form-group">
+                    <label>등록 학원</label>
+                    <div class="text-muted">{{ $defaultAcademy->name }}</div>
+                </div>
+            @endif
             <div class="form-group">
                 <label>과목 선택 (복수 선택 가능)</label>
                 @if ($subjects->isEmpty())

@@ -16,6 +16,7 @@ class CalendarController extends Controller
     public function index(Request $request)
     {
         $instructor = Auth::user();
+        $academyId = session('academy_id');
         $monthInput = $request->query('month', now()->format('Y-m'));
         $monthDate = Carbon::createFromFormat('Y-m', $monthInput)->startOfMonth();
         $start = $monthDate->copy()->startOfWeek(Carbon::MONDAY);
@@ -25,6 +26,7 @@ class CalendarController extends Controller
             $query->withTrashed();
         }, 'subject'])
             ->where('instructor_id', $instructor->id)
+            ->where('academy_id', $academyId)
             ->get();
 
         foreach ($sessions as $session) {
@@ -53,7 +55,12 @@ class CalendarController extends Controller
 
         $sessions = $sessions->groupBy('weekday');
 
-        $studentIds = $instructor->students()->withTrashed()->pluck('id');
+        $studentIds = $instructor->students()
+            ->withTrashed()
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId);
+            })
+            ->pluck('id');
         $attendances = LessonAttendance::whereIn('student_id', $studentIds)
             ->whereBetween('lesson_date', [$start->toDateString(), $end->toDateString()])
             ->get();
@@ -111,11 +118,17 @@ class CalendarController extends Controller
             ->values();
         $pendingTuitionRequests = TuitionRequest::with('student')
             ->where('instructor_id', $instructor->id)
+            ->whereHas('student.academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId);
+            })
             ->where('status', 'pending')
             ->orderByDesc('requested_at')
             ->get();
         $recentCompletedTuitionRequests = TuitionRequest::with('student')
             ->where('instructor_id', $instructor->id)
+            ->whereHas('student.academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId);
+            })
             ->where('status', 'completed')
             ->orderByDesc('processed_at')
             ->limit(5)
@@ -137,6 +150,7 @@ class CalendarController extends Controller
     public function toggleAttendance(Request $request)
     {
         $instructor = Auth::user();
+        $academyId = session('academy_id');
         $validated = $request->validate([
             'student_id' => [
                 'required',
@@ -144,13 +158,21 @@ class CalendarController extends Controller
             ],
             'class_session_id' => [
                 'required',
-                Rule::exists('class_sessions', 'id')->where('instructor_id', $instructor->id),
+                Rule::exists('class_sessions', 'id')
+                    ->where('instructor_id', $instructor->id)
+                    ->where('academy_id', $academyId),
             ],
             'lesson_date' => ['required', 'date'],
         ]);
 
-        $student = Student::withTrashed()->findOrFail($validated['student_id']);
-        $classSession = ClassSession::with('students')->findOrFail($validated['class_session_id']);
+        $student = Student::withTrashed()
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId);
+            })
+            ->findOrFail($validated['student_id']);
+        $classSession = ClassSession::with('students')
+            ->where('academy_id', $academyId)
+            ->findOrFail($validated['class_session_id']);
         $lessonDate = Carbon::parse($validated['lesson_date'])->startOfDay();
         $lessonDateString = $lessonDate->toDateString();
 
@@ -196,6 +218,7 @@ class CalendarController extends Controller
     public function requestTuition(Request $request)
     {
         $instructor = Auth::user();
+        $academyId = session('academy_id');
         $validated = $request->validate([
             'student_id' => [
                 'required',
@@ -203,7 +226,9 @@ class CalendarController extends Controller
             ],
         ]);
 
-        $student = Student::findOrFail($validated['student_id']);
+        $student = Student::whereHas('academies', function ($query) use ($academyId) {
+            $query->where('academies.id', $academyId);
+        })->findOrFail($validated['student_id']);
 
         $attendanceQuery = LessonAttendance::where('student_id', $student->id)
             ->orderBy('lesson_date');
@@ -240,7 +265,13 @@ class CalendarController extends Controller
 
     private function buildBillingStats($instructor): array
     {
-        $students = $instructor->students()->orderBy('name')->get();
+        $academyId = session('academy_id');
+        $students = $instructor->students()
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId);
+            })
+            ->orderBy('name')
+            ->get();
         $stats = [];
 
         foreach ($students as $student) {

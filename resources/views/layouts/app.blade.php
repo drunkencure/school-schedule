@@ -31,6 +31,19 @@
                 @endif
             </nav>
             <div class="nav-actions">
+                @if (!empty($availableAcademies) && $availableAcademies->isNotEmpty())
+                    <form method="POST" action="{{ route('academies.select') }}" class="academy-select">
+                        @csrf
+                        <label for="academy_id" class="sr-only">학원 선택</label>
+                        <select id="academy_id" name="academy_id" onchange="this.form.submit()">
+                            @foreach ($availableAcademies as $academy)
+                                <option value="{{ $academy->id }}" {{ optional($currentAcademy)->id === $academy->id ? 'selected' : '' }}>
+                                    {{ $academy->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </form>
+                @endif
                 <span class="user-name">{{ auth()->user()->name }}</span>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf

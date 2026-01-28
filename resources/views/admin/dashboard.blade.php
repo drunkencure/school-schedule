@@ -4,6 +4,51 @@
     <h2>전체 관리자</h2>
 
     <div class="card">
+        <h3>학원 관리</h3>
+        <form method="POST" action="{{ route('admin.academies.store') }}">
+            @csrf
+            <div class="grid two">
+                <div class="form-group">
+                    <label for="academy_name">학원 이름</label>
+                    <input type="text" id="academy_name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="academy_address">주소</label>
+                    <input type="text" id="academy_address" name="address">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="academy_memo">메모</label>
+                    <input type="text" id="academy_memo" name="memo">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-secondary">학원 등록</button>
+        </form>
+
+        <table class="table" style="margin-top: 16px;">
+            <thead>
+            <tr>
+                <th>학원 이름</th>
+                <th>주소</th>
+                <th>메모</th>
+            </tr>
+            </thead>
+            <tbody>
+            @forelse ($academies as $academy)
+                <tr>
+                    <td>{{ $academy->name }}</td>
+                    <td>{{ $academy->address ?? '-' }}</td>
+                    <td>{{ $academy->memo ?? '-' }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="3">등록된 학원이 없습니다.</td>
+                </tr>
+            @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
         <h3>수업료 입금 요청</h3>
         <table class="table">
             <thead>

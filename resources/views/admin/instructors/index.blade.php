@@ -44,6 +44,28 @@
     </div>
 
     <div class="card">
+        <h3>기존 강사 연결</h3>
+        <form method="POST" action="{{ route('admin.instructors.attach') }}">
+            @csrf
+            <div class="form-group" style="max-width: 320px;">
+                <label for="existing_instructor_id">강사 선택</label>
+                <select id="existing_instructor_id" name="instructor_id" required>
+                    <option value="">선택</option>
+                    @foreach ($availableInstructors as $instructor)
+                        <option value="{{ $instructor->id }}">
+                            {{ $instructor->name }} ({{ $instructor->login_id }})
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <button type="submit" class="btn btn-secondary">현재 학원에 연결</button>
+        </form>
+        @if ($availableInstructors->isEmpty())
+            <p class="text-muted" style="margin-top: 8px;">연결 가능한 강사가 없습니다.</p>
+        @endif
+    </div>
+
+    <div class="card">
         <h3>등록된 강사</h3>
         <form method="GET" action="{{ route('admin.instructors.index') }}" style="margin-bottom: 16px; display: flex; justify-content: flex-end; gap: 8px; align-items: flex-end; flex-wrap: wrap;">
             <div class="form-group" style="margin-bottom: 0; width: 240px;">

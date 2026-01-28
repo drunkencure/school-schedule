@@ -15,8 +15,14 @@ class StudentController extends Controller
     public function index()
     {
         $instructor = Auth::user();
-        $students = Student::with(['classSessions.subject'])
+        $academyId = session('academy_id');
+        $students = Student::with(['classSessions' => function ($query) use ($academyId) {
+            $query->where('academy_id', $academyId)->with('subject');
+        }])
             ->where('instructor_id', $instructor->id)
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId);
+            })
             ->orderBy('name')
             ->get();
 
@@ -29,9 +35,13 @@ class StudentController extends Controller
     public function create()
     {
         $instructor = Auth::user();
+        $academyId = session('academy_id');
 
         return view('instructor.students.create', [
-            'subjects' => $instructor->subjects()->orderBy('name')->get(),
+            'subjects' => $instructor->subjects()
+                ->where('academy_id', $academyId)
+                ->orderBy('name')
+                ->get(),
             'timeSlots' => $this->timeSlots(),
             'days' => config('schedule.days'),
         ]);
@@ -40,6 +50,7 @@ class StudentController extends Controller
     public function store(Request $request, ScheduleService $scheduleService)
     {
         $instructor = Auth::user();
+        $academyId = session('academy_id');
         $timeSlots = $this->timeSlots();
 
         $validated = $request->validate([
@@ -55,13 +66,22 @@ class StudentController extends Controller
             'confirm_group' => ['nullable', 'boolean'],
         ]);
 
-        DB::transaction(function () use ($instructor, $validated, $scheduleService) {
+        $subjectAllowed = $instructor->subjects()
+            ->where('subjects.id', $validated['subject_id'])
+            ->where('academy_id', $academyId)
+            ->exists();
+        if (! $subjectAllowed) {
+            return back()->withErrors(['subject_id' => '선택한 과목은 현재 학원에 속하지 않습니다.']);
+        }
+
+        DB::transaction(function () use ($instructor, $validated, $scheduleService, $academyId) {
             $student = Student::create([
                 'instructor_id' => $instructor->id,
                 'name' => $validated['name'],
                 'registered_at' => $validated['registered_at'],
                 'billing_cycle_count' => $validated['billing_cycle_count'],
             ]);
+            $student->academies()->syncWithoutDetaching([$academyId]);
 
             $scheduleService->assignStudentToSession(
                 $instructor,
@@ -69,7 +89,8 @@ class StudentController extends Controller
                 (int) $validated['subject_id'],
                 (int) $validated['weekday'],
                 $validated['start_time'],
-                (bool) ($validated['confirm_group'] ?? false)
+                (bool) ($validated['confirm_group'] ?? false),
+                $academyId
             );
         });
 
@@ -119,7 +140,9 @@ class StudentController extends Controller
 
     private function authorizeStudent(Student $student): void
     {
-        if ($student->instructor_id !== Auth::id()) {
+        $academyId = session('academy_id');
+        if ($student->instructor_id !== Auth::id()
+            || ! $student->academies()->whereKey($academyId)->exists()) {
             abort(403);
         }
     }

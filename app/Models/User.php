@@ -10,6 +10,7 @@ use App\Models\Subject;
 use App\Models\Student;
 use App\Models\ClassSession;
 use App\Models\TuitionRequest;
+use App\Models\Academy;
 
 class User extends Authenticatable
 {
@@ -71,5 +72,12 @@ class User extends Authenticatable
     public function tuitionRequests()
     {
         return $this->hasMany(TuitionRequest::class, 'instructor_id');
+    }
+
+    public function academies()
+    {
+        return $this->belongsToMany(Academy::class, 'academy_user')
+            ->withPivot('status')
+            ->withTimestamps();
     }
 }

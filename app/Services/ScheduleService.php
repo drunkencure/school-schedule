@@ -16,11 +16,13 @@ class ScheduleService
         int $subjectId,
         int $weekday,
         string $startTime,
-        bool $confirmGroup
+        bool $confirmGroup,
+        int $academyId
     ): ClassSession {
         $startTimeValue = Carbon::createFromFormat('H:i', $startTime)->format('H:i:s');
 
-        $existing = ClassSession::where('instructor_id', $instructor->id)
+        $existing = ClassSession::where('academy_id', $academyId)
+            ->where('instructor_id', $instructor->id)
             ->where('weekday', $weekday)
             ->where('start_time', $startTimeValue)
             ->first();
@@ -72,6 +74,7 @@ class ScheduleService
             ->format('H:i:s');
 
         $session = ClassSession::create([
+            'academy_id' => $academyId,
             'instructor_id' => $instructor->id,
             'subject_id' => $subjectId,
             'weekday' => $weekday,

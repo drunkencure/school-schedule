@@ -15,8 +15,12 @@ class ScheduleController extends Controller
     public function dashboard()
     {
         $instructor = Auth::user();
+        $academyId = session('academy_id');
         $gridData = $this->buildGrid($instructor);
         $pendingStudents = $instructor->students()
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId);
+            })
             ->whereDoesntHave('classSessions')
             ->orderBy('name')
             ->get();
@@ -30,16 +34,30 @@ class ScheduleController extends Controller
     public function index(Request $request)
     {
         $instructor = Auth::user();
+        $academyId = session('academy_id');
         $gridData = $this->buildGrid($instructor);
         $selectedStudentId = $request->query('student_id');
         if ($selectedStudentId) {
-            $selectedStudentId = $instructor->students()->where('id', $selectedStudentId)->value('id');
+            $selectedStudentId = $instructor->students()
+                ->whereHas('academies', function ($query) use ($academyId) {
+                    $query->where('academies.id', $academyId);
+                })
+                ->where('id', $selectedStudentId)
+                ->value('id');
         }
 
         return view('instructor.schedule.index', [
             ...$gridData,
-            'students' => $instructor->students()->orderBy('name')->get(),
-            'subjects' => $instructor->subjects()->orderBy('name')->get(),
+            'students' => $instructor->students()
+                ->whereHas('academies', function ($query) use ($academyId) {
+                    $query->where('academies.id', $academyId);
+                })
+                ->orderBy('name')
+                ->get(),
+            'subjects' => $instructor->subjects()
+                ->where('academy_id', $academyId)
+                ->orderBy('name')
+                ->get(),
             'selectedStudentId' => $selectedStudentId,
         ]);
     }
@@ -47,6 +65,7 @@ class ScheduleController extends Controller
     public function store(Request $request, ScheduleService $scheduleService)
     {
         $instructor = Auth::user();
+        $academyId = session('academy_id');
         $timeSlots = $this->timeSlots();
 
         $validated = $request->validate([
@@ -63,7 +82,19 @@ class ScheduleController extends Controller
             'confirm_group' => ['nullable', 'boolean'],
         ]);
 
-        $student = Student::findOrFail($validated['student_id']);
+        $student = Student::where('instructor_id', $instructor->id)
+            ->whereHas('academies', function ($query) use ($academyId) {
+                $query->where('academies.id', $academyId);
+            })
+            ->findOrFail($validated['student_id']);
+
+        $subjectAllowed = $instructor->subjects()
+            ->where('subjects.id', $validated['subject_id'])
+            ->where('academy_id', $academyId)
+            ->exists();
+        if (! $subjectAllowed) {
+            return back()->withErrors(['subject_id' => '선택한 과목은 현재 학원에 속하지 않습니다.']);
+        }
 
         $scheduleService->assignStudentToSession(
             $instructor,
@@ -71,7 +102,8 @@ class ScheduleController extends Controller
             (int) $validated['subject_id'],
             (int) $validated['weekday'],
             $validated['start_time'],
-            (bool) ($validated['confirm_group'] ?? false)
+            (bool) ($validated['confirm_group'] ?? false),
+            $academyId
         );
 
         return redirect()->route('schedule.index')->with('status', '시간표를 등록했습니다.');
@@ -113,18 +145,22 @@ class ScheduleController extends Controller
 
     private function authorizeSession(ClassSession $classSession, int $instructorId): void
     {
-        if ($classSession->instructor_id !== $instructorId) {
+        $academyId = session('academy_id');
+        if ($classSession->instructor_id !== $instructorId
+            || (int) $classSession->academy_id !== (int) $academyId) {
             abort(403);
         }
     }
 
     private function buildGrid($instructor): array
     {
+        $academyId = session('academy_id');
         $days = config('schedule.days');
         $timeSlots = $this->timeSlots();
 
         $sessions = ClassSession::with(['students', 'subject'])
             ->where('instructor_id', $instructor->id)
+            ->where('academy_id', $academyId)
             ->whereHas('students')
             ->get();
 
@@ -158,6 +194,7 @@ class ScheduleController extends Controller
 
     private function updateSessionTime(Request $request, ClassSession $classSession, int $instructorId)
     {
+        $academyId = session('academy_id');
         $timeSlots = $this->timeSlots();
 
         $validated = $request->validate([
@@ -167,7 +204,8 @@ class ScheduleController extends Controller
 
         $startTimeValue = Carbon::createFromFormat('H:i', $validated['start_time'])->format('H:i:s');
 
-        $conflict = ClassSession::where('instructor_id', $instructorId)
+        $conflict = ClassSession::where('academy_id', $academyId)
+            ->where('instructor_id', $instructorId)
             ->where('weekday', $validated['weekday'])
             ->where('start_time', $startTimeValue)
             ->where('id', '!=', $classSession->id)
