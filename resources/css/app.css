@@ -400,6 +400,11 @@ a {
     gap: 6px;
 }
 
+.day-date {
+    font-size: 12px;
+    color: #475569;
+}
+
 .today-pill {
     display: inline-block;
     padding: 2px 6px;
@@ -428,6 +433,10 @@ a {
     display: block;
     font-size: 12px;
     opacity: 0.8;
+}
+
+.session-status {
+    margin-top: 6px;
 }
 
 .session-admin {

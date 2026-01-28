@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Subject;
 use App\Models\Student;
+use App\Models\LessonAttendance;
 use App\Models\TuitionRequest;
 use App\Models\User;
 use App\Models\ClassSession;
@@ -278,6 +279,12 @@ class AdminController extends Controller
         $weekStart = Carbon::now()->startOfWeek(Carbon::MONDAY);
         $weekEnd = (clone $weekStart)->addDays(6);
         $weekRange = sprintf('%s ~ %s', $weekStart->format('Y-m-d'), $weekEnd->format('Y-m-d'));
+        $showYear = $weekStart->year !== $weekEnd->year;
+        $weekDates = [];
+
+        foreach ($days as $dayKey => $dayLabel) {
+            $weekDates[$dayKey] = $weekStart->copy()->addDays($dayKey - 1);
+        }
 
         $approvedInstructors = User::where('role', 'instructor')
             ->where('status', 'approved')
@@ -292,6 +299,7 @@ class AdminController extends Controller
             ->get();
 
         $scheduleGrid = [];
+        $attendanceMap = [];
         $palette = [
             'instructor-color-1',
             'instructor-color-2',
@@ -313,13 +321,28 @@ class AdminController extends Controller
             $instructorColors[$instructor->id] = $palette[$index % count($palette)];
         }
 
+        if ($scheduleSessions->isNotEmpty()) {
+            $attendanceRecords = LessonAttendance::query()
+                ->whereBetween('lesson_date', [$weekStart->toDateString(), $weekEnd->toDateString()])
+                ->whereIn('class_session_id', $scheduleSessions->pluck('id'))
+                ->get(['class_session_id', 'lesson_date']);
+
+            foreach ($attendanceRecords as $attendance) {
+                $dateKey = $attendance->lesson_date->toDateString();
+                $attendanceMap[$attendance->class_session_id][$dateKey] = true;
+            }
+        }
+
         return [
             'days' => $days,
             'timeSlots' => $timeSlots,
             'todayKey' => $todayKey,
             'weekRange' => $weekRange,
+            'weekDates' => $weekDates,
+            'showYear' => $showYear,
             'scheduleGrid' => $scheduleGrid,
             'scheduleSessions' => $scheduleSessions,
+            'attendanceMap' => $attendanceMap,
             'approvedInstructors' => $approvedInstructors,
             'instructorColors' => $instructorColors,
             'approvedInstructorsCount' => $approvedInstructors->count(),

@@ -50,6 +50,9 @@
                     {{ $instructor->name }}
                 </button>
             @endforeach
+            <button type="button" class="filter-btn" data-completed-filter="completed" aria-pressed="false">
+                완료 수업만
+            </button>
         </div>
 
         <div class="schedule-grid">
@@ -58,9 +61,17 @@
                 <tr>
                     <th>시간</th>
                     @foreach ($days as $dayKey => $dayLabel)
+                        @php
+                            $dayDate = $weekDates[$dayKey] ?? null;
+                        @endphp
                         <th class="{{ $todayKey === $dayKey ? 'today-column' : '' }}">
                             <div class="day-header">
                                 <span>{{ $dayLabel }}</span>
+                                @if ($dayDate)
+                                    <span class="day-date" title="{{ $dayDate->format('Y-m-d') }}">
+                                        {{ $dayDate->format($showYear ? 'Y/n/j' : 'n/j') }}
+                                    </span>
+                                @endif
                                 @if ($todayKey === $dayKey)
                                     <span class="today-pill">오늘</span>
                                 @endif
@@ -76,13 +87,19 @@
                         @foreach ($days as $dayKey => $dayLabel)
                             @php
                                 $sessions = $scheduleGrid[$dayKey][$time] ?? [];
+                                $dateKey = isset($weekDates[$dayKey]) ? $weekDates[$dayKey]->toDateString() : null;
                             @endphp
                             <td class="schedule-slot {{ $todayKey === $dayKey ? 'today-column' : '' }}">
                                 @foreach ($sessions as $session)
                                     @php
                                         $colorClass = $instructorColors[$session->instructor_id] ?? 'instructor-color-1';
+                                        $isCompleted = $dateKey
+                                            ? isset($attendanceMap[$session->id][$dateKey])
+                                            : false;
                                     @endphp
-                                    <div class="session session-admin {{ $colorClass }}" data-instructor-id="{{ $session->instructor_id }}">
+                                    <div class="session session-admin {{ $colorClass }}"
+                                         data-instructor-id="{{ $session->instructor_id }}"
+                                         data-completed="{{ $isCompleted ? '1' : '0' }}">
                                         <div class="session-title">
                                             <strong>{{ $session->instructor->name ?? '강사 미지정' }}</strong>
                                             <span class="session-subject">{{ $session->subject->name ?? '과목 미지정' }}</span>
@@ -90,6 +107,9 @@
                                         <small>{{ $session->students->pluck('name')->join(', ') ?: '수강생 없음' }}</small>
                                         @if ($session->is_group)
                                             <span class="tag">그룹</span>
+                                        @endif
+                                        @if ($isCompleted)
+                                            <span class="status-badge status-completed session-status">수업 완료</span>
                                         @endif
                                     </div>
                                 @endforeach
@@ -104,54 +124,4 @@
             @endif
         </div>
     </div>
-@endsection
-
-@section('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const scheduleCard = document.querySelector('.dashboard-schedule');
-            if (!scheduleCard) {
-                return;
-            }
-
-            const filterButtons = scheduleCard.querySelectorAll('[data-instructor-filter]');
-            const sessions = scheduleCard.querySelectorAll('.session[data-instructor-id]');
-            const selectedCountEl = scheduleCard.querySelector('#selectedSessionCount');
-            const totalCount = sessions.length;
-
-            const setActiveInstructor = (instructorId) => {
-                filterButtons.forEach((button) => {
-                    const isActive = button.dataset.instructorFilter === instructorId;
-                    button.classList.toggle('is-active', isActive);
-                    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-                });
-
-                let visibleCount = 0;
-                sessions.forEach((session) => {
-                    const isMatch = instructorId === 'all' || session.dataset.instructorId === instructorId;
-                    if (instructorId === 'all') {
-                        session.classList.remove('is-hidden', 'is-highlighted');
-                    } else {
-                        session.classList.toggle('is-hidden', !isMatch);
-                        session.classList.toggle('is-highlighted', isMatch);
-                    }
-                    if (isMatch) {
-                        visibleCount += 1;
-                    }
-                });
-
-                if (selectedCountEl) {
-                    selectedCountEl.textContent = instructorId === 'all' ? totalCount : visibleCount;
-                }
-            };
-
-            filterButtons.forEach((button) => {
-                button.addEventListener('click', () => {
-                    setActiveInstructor(button.dataset.instructorFilter);
-                });
-            });
-
-            setActiveInstructor('all');
-        });
-    </script>
 @endsection
