@@ -247,14 +247,14 @@
                         @endif
                     </td>
                     <td>
-                        @if ($stat['eligible'])
+                        @if ($stat['pending'])
+                            요청 대기 중
+                        @elseif ($stat['eligible'])
                             <form method="POST" action="{{ route('calendar.tuition.request') }}">
                                 @csrf
                                 <input type="hidden" name="student_id" value="{{ $student->id }}">
                                 <button type="submit" class="btn">입금 요청</button>
                             </form>
-                        @elseif ($stat['pending'])
-                            요청 대기 중
                         @else
                             회차 부족
                         @endif

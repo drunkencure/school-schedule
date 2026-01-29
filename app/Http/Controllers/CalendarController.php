@@ -170,13 +170,15 @@ class CalendarController extends Controller
                 $query->where('academies.id', $academyId);
             })
             ->findOrFail($validated['student_id']);
-        $classSession = ClassSession::with('students')
+        $classSession = ClassSession::with(['students' => function ($query) {
+            $query->withTrashed();
+        }])
             ->where('academy_id', $academyId)
             ->findOrFail($validated['class_session_id']);
         $lessonDate = Carbon::parse($validated['lesson_date'])->startOfDay();
         $lessonDateString = $lessonDate->toDateString();
 
-        if (! $classSession->students->contains($student->id)) {
+        if (! $classSession->students->contains('id', $student->id)) {
             return back()->withErrors(['lesson_date' => '해당 수업에 등록된 학생이 아닙니다.']);
         }
 
@@ -230,6 +232,15 @@ class CalendarController extends Controller
             $query->where('academies.id', $academyId);
         })->findOrFail($validated['student_id']);
 
+        $hasPendingRequest = TuitionRequest::where('student_id', $student->id)
+            ->where('instructor_id', $instructor->id)
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($hasPendingRequest) {
+            return back()->withErrors(['student_id' => '이미 처리 대기 중인 요청이 있습니다.']);
+        }
+
         $attendanceQuery = LessonAttendance::where('student_id', $student->id)
             ->orderBy('lesson_date');
 
@@ -282,9 +293,11 @@ class CalendarController extends Controller
             $count = $query->count();
 
             $latestRequest = TuitionRequest::where('student_id', $student->id)
+                ->where('instructor_id', $instructor->id)
                 ->latest('requested_at')
                 ->first();
             $hasPendingRequest = TuitionRequest::where('student_id', $student->id)
+                ->where('instructor_id', $instructor->id)
                 ->where('status', 'pending')
                 ->exists();
 

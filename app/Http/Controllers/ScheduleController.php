@@ -21,7 +21,9 @@ class ScheduleController extends Controller
             ->whereHas('academies', function ($query) use ($academyId) {
                 $query->where('academies.id', $academyId);
             })
-            ->whereDoesntHave('classSessions')
+            ->whereDoesntHave('classSessions', function ($query) use ($academyId) {
+                $query->where('academy_id', $academyId);
+            })
             ->orderBy('name')
             ->get();
 
