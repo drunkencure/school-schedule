@@ -15,7 +15,7 @@
                 학원 수강생 스케쥴러
             </a>
         @else
-            <div class="brand">학원 수강생 스케쥴러</div>
+            <a class="brand" href="{{ route('login') }}">학원 수강생 스케쥴러</a>
         @endauth
         @auth
             <nav class="nav">
