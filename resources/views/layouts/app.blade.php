@@ -12,10 +12,10 @@
     <div class="container">
         @auth
             <a class="brand" href="{{ auth()->user()->role === 'admin' ? route('admin.dashboard') : route('instructor.dashboard') }}">
-                학원 수강생 스케쥴러
+                학원 스케쥴러
             </a>
         @else
-            <a class="brand" href="{{ route('login') }}">학원 수강생 스케쥴러</a>
+            <a class="brand" href="{{ route('login') }}">학원 스케쥴려</a>
         @endauth
         @auth
             <nav class="nav">
