@@ -164,6 +164,7 @@ protected function isAccessible(User $user, ?string $path = null): bool
 
 ### Running Tests
 - Run the minimal number of tests using an appropriate filter after implementing changes to verify them.
+- Always run tests with escalated permissions (approve) when the environment is sandboxed to ensure MariaDB connectivity and avoid permission-related failures.
 - To run all tests: `php artisan test`.
 - To run all tests in a file: `php artisan test tests/Feature/ExampleTest.php`.
 - To filter on a particular test name: `php artisan test --filter=testName`.
