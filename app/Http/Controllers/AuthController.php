@@ -2,22 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Subject;
 use App\Models\Academy;
+use App\Models\Subject;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function showLogin()
+    public function showLogin(): View
     {
         return view('auth.login');
     }
 
-    public function login(Request $request)
+    public function login(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
             'login_id' => ['required', 'string'],
@@ -59,33 +61,59 @@ class AuthController extends Controller
         return redirect()->route('instructor.dashboard');
     }
 
-    public function showRegister()
+    public function showRegister(): View
     {
-        $defaultAcademy = Academy::orderBy('id')->first();
-        $subjects = $defaultAcademy
-            ? Subject::where('academy_id', $defaultAcademy->id)->orderBy('name')->get()
-            : collect();
+        $academies = Academy::orderBy('name')->get();
+        $selectedAcademyIds = old('academy_ids', $academies->first()?->id ? [$academies->first()->id] : []);
+        $selectedAcademyIds = collect($selectedAcademyIds)
+            ->map(function ($academyId) {
+                return (int) $academyId;
+            })
+            ->filter()
+            ->values()
+            ->all();
+        $allSubjects = $academies->isEmpty()
+            ? collect()
+            : Subject::whereIn('academy_id', $academies->pluck('id'))
+                ->orderBy('name')
+                ->get();
+        $selectedHasSubjects = ! empty($selectedAcademyIds)
+            && $allSubjects->whereIn('academy_id', $selectedAcademyIds)->isNotEmpty();
 
         return view('auth.register', [
-            'subjects' => $subjects,
-            'defaultAcademy' => $defaultAcademy,
+            'academies' => $academies,
+            'selectedAcademyIds' => $selectedAcademyIds,
+            'allSubjects' => $allSubjects,
+            'selectedHasSubjects' => $selectedHasSubjects,
         ]);
     }
 
-    public function register(Request $request)
+    public function register(Request $request): RedirectResponse
     {
-        $defaultAcademy = Academy::orderBy('id')->first();
-        if (! $defaultAcademy) {
-            return back()->withErrors(['login_id' => '등록 가능한 학원이 없습니다. 관리자에게 문의하세요.']);
-        }
+        $academyIds = collect((array) $request->input('academy_ids', []))
+            ->map(function ($academyId) {
+                return (int) $academyId;
+            })
+            ->filter()
+            ->values()
+            ->all();
         $validated = $request->validate([
             'login_id' => ['required', 'string', 'max:50', 'unique:users,login_id', Rule::notIn(['admin'])],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'name' => ['required', 'string', 'max:255'],
+            'academy_ids' => ['required', 'array', 'min:1'],
+            'academy_ids.*' => ['integer', 'exists:academies,id'],
             'subjects' => ['required', 'array', 'min:1'],
-            'subjects.*' => ['integer', Rule::exists('subjects', 'id')->where('academy_id', $defaultAcademy->id)],
+            'subjects.*' => ['integer', Rule::exists('subjects', 'id')->where(function ($query) use ($academyIds) {
+                $query->whereIn('academy_id', $academyIds);
+            })],
             'password' => ['required', 'string', 'min:6', 'confirmed'],
+        ], [
+            'academy_ids.required' => '학원을 하나 이상 선택해야 합니다.',
+            'academy_ids.min' => '학원을 하나 이상 선택해야 합니다.',
         ]);
+
+        $academyIds = array_values(array_unique($validated['academy_ids']));
 
         $user = User::create([
             'login_id' => $validated['login_id'],
@@ -97,16 +125,17 @@ class AuthController extends Controller
         ]);
 
         $user->subjects()->sync($validated['subjects']);
-        $user->academies()->syncWithoutDetaching([
-            $defaultAcademy->id => ['status' => 'pending'],
-        ]);
+        $academyPayload = collect($academyIds)->mapWithKeys(function ($academyId) {
+            return [$academyId => ['status' => 'pending']];
+        })->all();
+        $user->academies()->syncWithoutDetaching($academyPayload);
 
         return redirect()
             ->route('login')
             ->with('status', '등록 요청이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.');
     }
 
-    public function logout(Request $request)
+    public function logout(Request $request): RedirectResponse
     {
         Auth::logout();
         $request->session()->invalidate();

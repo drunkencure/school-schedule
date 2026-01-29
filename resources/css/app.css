@@ -226,6 +226,12 @@ a {
     margin-top: 4px;
 }
 
+.text-error {
+    color: #b71c1c;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
 .sr-only {
     position: absolute;
     width: 1px;
