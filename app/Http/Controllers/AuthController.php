@@ -33,18 +33,20 @@ class AuthController extends Controller
         }
 
         if ($user->role === 'instructor') {
+            if ($user->status !== 'approved') {
+                return back()->withErrors([
+                    'login_id' => '승인된 강사만 로그인할 수 있습니다.',
+                ])->onlyInput('login_id');
+            }
+
             $hasApprovedAcademy = $user->academies()
                 ->wherePivot('status', 'approved')
                 ->exists();
-            if (!$hasApprovedAcademy) {
+            if (! $hasApprovedAcademy) {
                 return back()->withErrors([
                     'login_id' => '승인된 학원에 소속된 강사만 로그인할 수 있습니다.',
                 ])->onlyInput('login_id');
             }
-
-            return back()->withErrors([
-                'login_id' => '승인된 강사만 로그인할 수 있습니다.',
-            ])->onlyInput('login_id');
         }
 
         Auth::login($user, $request->boolean('remember'));
