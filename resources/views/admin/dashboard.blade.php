@@ -30,6 +30,7 @@
                 <th>학원 이름</th>
                 <th>주소</th>
                 <th>메모</th>
+                <th>삭제</th>
             </tr>
             </thead>
             <tbody>
@@ -38,10 +39,18 @@
                     <td>{{ $academy->name }}</td>
                     <td>{{ $academy->address ?? '-' }}</td>
                     <td>{{ $academy->memo ?? '-' }}</td>
+                    <td>
+                        <form method="POST" action="{{ route('admin.academies.destroy', $academy) }}"
+                              onsubmit="return confirm('학원을 삭제하면 연결된 강사와 수강생도 모두 삭제됩니다. 진행할까요?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-danger btn-mini">삭제</button>
+                        </form>
+                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="3">등록된 학원이 없습니다.</td>
+                    <td colspan="4">등록된 학원이 없습니다.</td>
                 </tr>
             @endforelse
             </tbody>

@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AcademyController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\ScheduleController;
@@ -32,6 +32,7 @@ Route::middleware(['auth', 'role:admin', 'academy'])->prefix('admin')->group(fun
     Route::get('/students', [AdminController::class, 'studentsIndex'])->name('admin.students.index');
     Route::post('/students', [AdminController::class, 'storeStudent'])->name('admin.students.store');
     Route::post('/academies', [AdminController::class, 'storeAcademy'])->name('admin.academies.store');
+    Route::delete('/academies/{academy}', [AdminController::class, 'destroyAcademy'])->name('admin.academies.destroy');
     Route::get('/instructors/{user}', [AdminController::class, 'showInstructor'])->name('admin.instructors.show');
     Route::post('/instructors/{user}/approve', [AdminController::class, 'approve'])->name('admin.instructors.approve');
     Route::post('/instructors/{user}/reject', [AdminController::class, 'reject'])->name('admin.instructors.reject');

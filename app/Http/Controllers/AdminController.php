@@ -2,15 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Subject;
-use App\Models\Student;
-use App\Models\LessonAttendance;
 use App\Models\Academy;
+use App\Models\ClassSession;
+use App\Models\LessonAttendance;
+use App\Models\Student;
+use App\Models\Subject;
 use App\Models\TuitionRequest;
 use App\Models\User;
-use App\Models\ClassSession;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
@@ -318,6 +320,40 @@ class AdminController extends Controller
         Academy::create($validated);
 
         return back()->with('status', '학원을 등록했습니다.');
+    }
+
+    public function destroyAcademy(Request $request, Academy $academy): RedirectResponse
+    {
+        $academyId = $academy->id;
+
+        DB::transaction(function () use ($academy, $academyId): void {
+            $studentIds = DB::table('academy_student')
+                ->where('academy_id', $academyId)
+                ->pluck('student_id');
+            $instructorIds = DB::table('academy_user')
+                ->join('users', 'academy_user.user_id', '=', 'users.id')
+                ->where('academy_user.academy_id', $academyId)
+                ->where('users.role', 'instructor')
+                ->pluck('users.id');
+
+            if ($studentIds->isNotEmpty()) {
+                Student::withTrashed()
+                    ->whereIn('id', $studentIds)
+                    ->forceDelete();
+            }
+
+            if ($instructorIds->isNotEmpty()) {
+                User::whereIn('id', $instructorIds)->delete();
+            }
+
+            $academy->delete();
+        });
+
+        if ((int) $request->session()->get('academy_id') === $academyId) {
+            $request->session()->forget('academy_id');
+        }
+
+        return back()->with('status', '학원을 삭제했습니다.');
     }
 
     public function showInstructor(User $user)
